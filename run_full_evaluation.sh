@@ -35,6 +35,9 @@ if [[ ! -f "plot_results.py" || ! -d "ebpf" ]]; then
 fi
 
 print_status "Starting complete wf-eval evaluation"
+print_warning "COMPREHENSIVE EVALUATION MODE: This will run all three experiment types"
+print_warning "Estimated completion time: 45-90 minutes depending on URLs and system performance"
+print_warning "Experiments include: baseline (no drops), fixed drop levels (0-20%), and dynamic dropping"
 START_TIME=$(date +%s)
 
 # ========================================================================
@@ -181,13 +184,13 @@ fi
 # ========================================================================
 # PHASE 4: Running measurements
 # ========================================================================
-print_status "PHASE 4: Running measurements"
+print_status "PHASE 4: Running complete evaluation experiments"
 
 # Create output directory
 mkdir -p out/pcaps
 
-print_status "Starting measurement script (this may take several minutes)..."
-print_warning "During measurements you will see detailed process output"
+print_status "Starting comprehensive measurement experiments (this will take considerable time)..."
+print_warning "Running all three experiment modes: baseline, fixed drop levels, and dynamic dropping"
 
 # Use venv if available, otherwise run in current environment
 if [[ -f "venv/bin/activate" ]] && [[ "$VIRTUAL_ENV" != *"venv"* ]]; then
@@ -198,13 +201,34 @@ else
     USING_VENV=false
 fi
 
-# Run measurements with default parameters
-if python3 run_measurements.py; then
-    print_success "Measurements completed"
+# Experiment 1: Baseline measurements (no packet dropping)
+print_status "Experiment 1/3: Baseline measurements (no packet dropping)"
+if python3 run_measurements.py --mode off --runs-per-level 10; then
+    print_success "Baseline measurements completed"
 else
-    print_error "Error during measurements"
+    print_error "Error during baseline measurements"
     exit 1
 fi
+
+# Experiment 2: Fixed drop level measurements  
+print_status "Experiment 2/3: Fixed drop level measurements (0%, 1%, 2%, 5%, 10%, 20%)"
+if python3 run_measurements.py --mode fixed --levels "0,1,2,5,10,20" --runs-per-level 10; then
+    print_success "Fixed drop level measurements completed"
+else
+    print_error "Error during fixed drop level measurements"
+    exit 1
+fi
+
+# Experiment 3: Dynamic packet dropping measurements
+print_status "Experiment 3/3: Dynamic packet dropping measurements"
+if python3 run_measurements.py --mode dynamic --runs-per-level 10 --dynamic-max-prob 50 --dynamic-min-pps 1000 --dynamic-max-pps 100000; then
+    print_success "Dynamic measurements completed"
+else
+    print_error "Error during dynamic measurements"
+    exit 1
+fi
+
+print_success "All measurement experiments completed successfully"
 
 # Verify that output files were created
 if [[ ! -f "out/nav_metrics.csv" ]]; then
@@ -274,8 +298,13 @@ DURATION_MIN=$((DURATION / 60))
 DURATION_SEC=$((DURATION % 60))
 
 print_success "======================================================"
-print_success "        EVALUATION COMPLETED SUCCESSFULLY!"
+print_success "     COMPREHENSIVE EVALUATION COMPLETED SUCCESSFULLY!"
 print_success "======================================================"
+echo
+print_success "All three experiment modes completed:"
+print_success "  ✓ Baseline measurements (no packet dropping)"
+print_success "  ✓ Fixed drop level measurements (0%, 1%, 2%, 5%, 10%, 20%)"  
+print_success "  ✓ Dynamic packet dropping measurements"
 echo
 print_status "Total execution time: ${DURATION_MIN}m ${DURATION_SEC}s"
 echo
@@ -294,8 +323,27 @@ echo "  • PCAP files are available for further analysis"
 echo
 
 # Optional: show a quick summary of measurements
-if command -v python3 >/dev/null 2>&1 && [[ -f "out/summary.csv" ]]; then
+if command -v python3 >/dev/null 2>&1 && [[ -f "out/nav_metrics.csv" ]]; then
     print_status "Quick results summary:"
+    python3 -c "
+import pandas as pd
+try:
+    df = pd.read_csv('out/nav_metrics.csv')
+    print(f'  • Total experiments conducted: {len(df)} measurements')
+    print(f'  • Experiment modes: {sorted(df[\"mode\"].unique())}')
+    if 'level' in df.columns:
+        print(f'  • Drop levels tested: {sorted(df[\"level\"].unique())}')
+        print(f'  • Samples per level: {dict(df[\"level\"].value_counts().sort_index())}')
+    print(f'  • Average Page Load Time: {df[\"plt_ms\"].mean():.1f}ms (±{df[\"plt_ms\"].std():.1f})')
+    print(f'  • URLs tested: {df[\"url\"].nunique()} unique websites')
+    mode_counts = df[\"mode\"].value_counts()
+    for mode, count in mode_counts.items():
+        print(f'  • {mode.title()} mode: {count} measurements')
+except Exception as e:
+    print(f'  • Error calculating summary: {e}')
+"
+elif command -v python3 >/dev/null 2>&1 && [[ -f "out/summary.csv" ]]; then
+    print_status "Quick results summary (from aggregated data):"
     python3 -c "
 import pandas as pd
 try:
