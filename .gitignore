@@ -1,0 +1,170 @@
+# =======================================================================
+# .gitignore per wf-eval project
+# =======================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# C/C++
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+core
+
+# eBPF specific
+*.bpf.o
+ebpf/loader
+ebpf/*.o
+
+# Output directories e risultati
+out/
+results/
+data/
+logs/
+*.log
+
+# File di output specifici del progetto
+*.pcap
+*.pcapng
+nav_metrics.csv
+summary.csv
+iat_up.csv
+iat_down.csv
+plots/
+
+# File temporanei
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Chrome/Selenium temporanei
+chrome-prof-*
+.chrome/
+chromedriver.log
+selenium-*.log
+
+# Network namespace e configurazioni temporanee
+nswrap-*
+
+# IDE e Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.atom/
+
+# Sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# SSL certificates e chiavi
+*.pem
+*.key
+*.crt
+*.cert
+
+# File di configurazione locale
+config.local
+settings.local
+.env.local
+
+# Test output
+test-results/
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Documentation build
+docs/_build/
+site/
+
+# Cache directories
+.cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Profiling data
+*.prof
+
+# Virtual environments
+venv*/
+.virtualenv*
+
+# Package manager
+node_modules/
+package-lock.json
+yarn.lock
