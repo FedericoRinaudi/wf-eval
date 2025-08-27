@@ -31,7 +31,18 @@ The tool simulates network conditions by dropping UDP packets at various rates a
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Set Execute Permissions
+
+First, make the scripts executable:
+
+```bash
+# Make all shell scripts executable
+chmod +x install_dependencies.sh
+chmod +x run_full_evaluation.sh
+chmod +x setup_netns.sh
+```
+
+### 2. Install Dependencies
 
 ```bash
 # Run the automated installation (Ubuntu 22.04 recommended)
@@ -45,7 +56,7 @@ This script installs:
 - eBPF development tools (libbpf, clang, linux-headers)
 - Python packages (selenium, scapy, matplotlib, pandas, tqdm)
 
-### 2. Run Complete Evaluation
+### 3. Run Complete Evaluation
 
 ```bash
 # Execute the full evaluation pipeline (45-90 minutes)
@@ -182,6 +193,12 @@ The tool measures:
    ```bash
    # Ensure proper privileges
    sudo -v
+   ```
+
+5. **Script execution permission denied**:
+   ```bash
+   # Make scripts executable
+   chmod +x *.sh
    ```
 
 ### Debug Mode
