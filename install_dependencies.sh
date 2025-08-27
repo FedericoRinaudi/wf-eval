@@ -109,7 +109,7 @@ install_chrome_and_chromedriver() {
     sudo unzip -o /tmp/chromedriver.zip -d /tmp/
     sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
     sudo chmod +x /usr/local/bin/chromedriver
-    rm -rf /tmp/chromedriver.zip /tmp/chromedriver-linux64
+    sudo rm -rf /tmp/chromedriver.zip /tmp/chromedriver-linux64
     
     print_success "Chrome ${CHROME_VERSION} and ChromeDriver ${CHROMEDRIVER_VERSION} installed"
 }
