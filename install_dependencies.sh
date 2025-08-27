@@ -58,6 +58,7 @@ check_ubuntu_version() {
 update_system() {
     print_status "Updating system packages..."
     sudo apt update
+    sudo apt upgrade -y
     print_success "System updated"
 }
 
@@ -175,6 +176,13 @@ verify_installation() {
     else
         print_error "tcpdump not found"
     fi
+    
+    # Verifica eBPF loader
+    if [[ -f "ebpf/loader" ]]; then
+        print_success "eBPF loader built"
+    else
+        print_warning "eBPF loader not found (normal if build failed)"
+    fi
 }
 
 show_usage_instructions() {
@@ -227,14 +235,6 @@ main() {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi
-    print_status "Creating output directories..."
-    
-    mkdir -p out/pcaps out/plots
-    print_success "Output directories created"
-}
-
-verify_installation() {
-    print_status "Verifying installation..."
     
     # Verifica Python
     if python3 --version >/dev/null 2>&1; then
