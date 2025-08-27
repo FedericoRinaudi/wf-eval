@@ -115,27 +115,27 @@ install_python_dependencies() {
 }
 
 install_chrome_and_chromedriver() {
-    print_status "Installing Google Chrome and ChromeDriver..."
+    print_status "Installing specific Chrome and ChromeDriver versions..."
     
-    # Aggiungi repository Google Chrome
-    wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+    # Versioni specifiche
+    CHROME_VERSION="138.0.7204.100"
+    CHROMEDRIVER_VERSION="138.0.7204.183"
     
-    sudo apt update
-    sudo apt install -y google-chrome-stable
+    # Installa Chrome versione specifica
+    print_status "Installing Google Chrome ${CHROME_VERSION}"
+    wget -q -O /tmp/chrome.deb "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}-1_amd64.deb"
+    sudo dpkg -i /tmp/chrome.deb || sudo apt-get install -f -y
+    rm -f /tmp/chrome.deb
     
-    # Installa ChromeDriver
-    CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-    CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%%.*}")
-    
-    print_status "Installing ChromeDriver version $CHROMEDRIVER_VERSION for Chrome $CHROME_VERSION"
-    
-    wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
-    sudo unzip -o /tmp/chromedriver.zip -d /usr/local/bin/
+    # Installa ChromeDriver versione specifica
+    print_status "Installing ChromeDriver ${CHROMEDRIVER_VERSION}"
+    wget -q -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip"
+    sudo unzip -o /tmp/chromedriver.zip -d /tmp/
+    sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
     sudo chmod +x /usr/local/bin/chromedriver
-    rm /tmp/chromedriver.zip
+    rm -rf /tmp/chromedriver.zip /tmp/chromedriver-linux64
     
-    print_success "Chrome and ChromeDriver installed"
+    print_success "Chrome ${CHROME_VERSION} and ChromeDriver ${CHROMEDRIVER_VERSION} installed"
 }
 
 install_ebpf_dependencies() {
