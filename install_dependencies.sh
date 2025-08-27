@@ -2,8 +2,7 @@
 set -euo pipefail
 
 # =======================================================================
-# Dependencies installation script for wf-eval project
-# Target OS: Ubuntu 22.04 LTS
+# Minimal dependencies installation script for wf-eval project
 # =======================================================================
 
 RED='\033[0;31m'
@@ -59,59 +58,35 @@ check_ubuntu_version() {
 update_system() {
     print_status "Updating system packages..."
     sudo apt update
-    sudo apt upgrade -y
     print_success "System updated"
 }
 
 install_basic_tools() {
-    print_status "Installing basic development tools..."
+    print_status "Installing essential tools..."
     sudo apt install -y \
-        build-essential \
-        git \
         curl \
         wget \
         unzip \
-        software-properties-common \
-        apt-transport-https \
-        ca-certificates \
-        gnupg \
-        lsb-release
-    print_success "Basic tools installed"
+        build-essential
+    print_success "Essential tools installed"
 }
 
 install_python_dependencies() {
-    print_status "Installing Python 3 and development packages..."
+    print_status "Installing Python and required packages..."
     sudo apt install -y \
         python3 \
-        python3-dev \
         python3-pip \
-        python3-venv \
-        python3-setuptools \
-        python3-wheel
+        python3-venv
     
-    print_status "Installing Python packages for the project..."
-    # Create a virtual environment to avoid conflicts
     if [[ ! -d "venv" ]]; then
         python3 -m venv venv
     fi
     
     source venv/bin/activate
-    
-    # Update pip in virtual environment
-    pip install --upgrade pip setuptools wheel
-    
-    # Install Python packages needed for the project
-    pip install \
-        selenium \
-        scapy \
-        pandas \
-        numpy \
-        matplotlib \
-        tqdm \
-        pathlib
-    
+    pip install --upgrade pip
+    pip install selenium scapy
     deactivate
-    print_success "Python environment created and packages installed"
+    print_success "Python environment ready"
 }
 
 install_chrome_and_chromedriver() {
@@ -138,95 +113,120 @@ install_chrome_and_chromedriver() {
     print_success "Chrome ${CHROME_VERSION} and ChromeDriver ${CHROMEDRIVER_VERSION} installed"
 }
 
-install_ebpf_dependencies() {
-    print_status "Installing eBPF development dependencies..."
-    
-    # Installa kernel headers
-    sudo apt install -y \
-        linux-headers-$(uname -r) \
-        linux-tools-$(uname -r) \
-        linux-tools-common \
-        linux-tools-generic
-    
-    # Installa LLVM/Clang per compilare eBPF
-    sudo apt install -y \
-        clang \
-        llvm \
-        gcc-multilib \
-        libc6-dev
-    
-    # Installa libbpf e dipendenze
-    sudo apt install -y \
-        libbpf-dev \
-        libelf-dev \
-        zlib1g-dev \
-        pkg-config
-    
-    print_success "eBPF dependencies installed"
-}
-
 install_networking_tools() {
-    print_status "Installing networking and monitoring tools..."
-    
+    print_status "Installing networking tools..."
     sudo apt install -y \
         tcpdump \
-        wireshark-common \
-        tshark \
-        capinfos \
         iproute2 \
-        iptables \
-        nftables \
-        netcat \
-        net-tools \
-        iputils-ping \
-        dnsutils
-    
-    # Aggiungi l'utente corrente al gruppo wireshark per tcpdump senza sudo
-    sudo usermod -a -G wireshark $USER
-    
+        iptables
     print_success "Networking tools installed"
 }
 
-install_make_and_build_tools() {
-    print_status "Installing build tools..."
-    
+install_ebpf_minimal() {
+    print_status "Installing minimal eBPF dependencies..."
     sudo apt install -y \
-        make \
-        cmake \
-        autoconf \
-        automake \
-        libtool \
-        pkg-config
-    
-    print_success "Build tools installed"
-}
-
-build_ebpf_loader() {
-    print_status "Building eBPF loader..."
-    
-    if [[ -d "ebpf" ]]; then
-        cd ebpf
-        make clean || true
-        make
-        cd ..
-        print_success "eBPF loader built successfully"
-    else
-        print_warning "ebpf directory not found. Make sure you're running this script from the project root."
-    fi
-}
-
-setup_network_namespace() {
-    print_status "Setting up network namespace (if setup_netns.sh exists)..."
-    
-    if [[ -f "setup_netns.sh" ]]; then
-        chmod +x setup_netns.sh
-        print_status "Network namespace setup script is ready. Run './setup_netns.sh' when needed."
-    else
-        print_warning "setup_netns.sh not found"
-    fi
+        clang \
+        libbpf-dev \
+        linux-headers-$(uname -r)
+    print_success "eBPF dependencies installed"
 }
 
 create_output_directories() {
+    print_status "Creating output directories..."
+    
+    mkdir -p out/pcaps out/plots
+    print_success "Output directories created"
+}
+
+verify_installation() {
+    print_status "Verifying installation..."
+    
+    # Verifica Python
+    if python3 --version >/dev/null 2>&1; then
+        print_success "Python3: $(python3 --version)"
+    else
+        print_error "Python3 not found"
+    fi
+    
+    # Verifica Chrome
+    if google-chrome --version >/dev/null 2>&1; then
+        print_success "Chrome: $(google-chrome --version)"
+    else
+        print_error "Google Chrome not found"
+    fi
+    
+    # Verifica ChromeDriver
+    if chromedriver --version >/dev/null 2>&1; then
+        print_success "ChromeDriver: $(chromedriver --version)"
+    else
+        print_error "ChromeDriver not found"
+    fi
+    
+    # Verifica Clang
+    if clang --version >/dev/null 2>&1; then
+        print_success "Clang: $(clang --version | head -1)"
+    else
+        print_error "Clang not found"
+    fi
+    
+    # Verifica tcpdump
+    if tcpdump --version >/dev/null 2>&1; then
+        print_success "tcpdump available"
+    else
+        print_error "tcpdump not found"
+    fi
+}
+
+show_usage_instructions() {
+    echo
+    print_success "Installation completed!"
+    echo
+    echo -e "${BLUE}Next steps:${NC}"
+    echo "1. Restart your terminal or run: source ~/.bashrc"
+    echo "2. Activate the Python virtual environment: source venv/bin/activate"
+    echo "3. Setup network namespace: sudo ./setup_netns.sh"
+    echo "4. Run measurements: python3 run_measurements.py --mode off"
+    echo
+    echo -e "${BLUE}Project files overview:${NC}"
+    echo "- run_measurements.py: Main measurement script"
+    echo "- analyse_pcaps.py: Analyze captured packets"
+    echo "- plot_results.py: Generate plots from results"
+    echo "- test_cache_disabled.py: Test cache disabled functionality"
+    echo "- setup_netns.sh: Setup network namespace"
+    echo "- ebpf/: eBPF packet dropper implementation"
+    echo
+    echo -e "${YELLOW}Note:${NC} You may need to log out and log back in for group membership changes to take effect."
+}
+
+main() {
+    echo -e "${GREEN}======================================${NC}"
+    echo -e "${GREEN} wf-eval Dependencies Installer${NC}"
+    echo -e "${GREEN} Ubuntu 22.04 LTS${NC}"
+    echo -e "${GREEN}======================================${NC}"
+    echo
+    
+    check_ubuntu_version
+    
+    if [[ $EUID -eq 0 ]]; then
+        print_error "Do not run this script as root. It will use sudo when needed."
+        exit 1
+    fi
+    
+    update_system
+    install_basic_tools
+    install_python_dependencies
+    install_chrome_and_chromedriver
+    install_networking_tools
+    install_ebpf_minimal
+    create_output_directories
+    verify_installation
+    show_usage_instructions
+}
+
+# Run only if script is called directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
     print_status "Creating output directories..."
     
     mkdir -p out/pcaps out/plots
