@@ -12,6 +12,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Richiede privilegi root per ip netns exec / eBPF / tcpdump
+if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+    echo -e "${YELLOW}[WARNING] Esecuzione non come root: riavvio con sudo -E...${NC}"
+    exec sudo -E env PATH="$PATH" "$0" "$@"
+fi
+
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -192,6 +198,12 @@ mkdir -p out/pcaps
 print_status "Starting comprehensive measurement experiments (this will take considerable time)..."
 print_warning "Running all three experiment modes: baseline, fixed drop levels, and dynamic dropping"
 
+# Preserve important environment variables for Chrome/Selenium
+export DISPLAY="${DISPLAY:-:0}"
+export HOME="${HOME}"
+export USER="${USER}"
+export PATH="${PATH}"
+
 # Use venv if available, otherwise run in current environment
 if [[ -f "venv/bin/activate" ]] && [[ "$VIRTUAL_ENV" != *"venv"* ]]; then
     print_status "Running measurements in project virtual environment..."
@@ -201,9 +213,22 @@ else
     USING_VENV=false
 fi
 
+# Test Chrome accessibility before starting measurements
+print_status "Testing Chrome accessibility in namespace..."
+if ! sudo ip netns exec wfns /usr/bin/google-chrome --version >/dev/null 2>&1; then
+    print_warning "Chrome test failed, but proceeding anyway"
+fi
+
+# Test basic Python import
+print_status "Testing Python selenium import..."
+if ! python3 -c "from selenium import webdriver; print('Selenium import OK')" 2>/dev/null; then
+    print_error "Selenium import failed"
+    exit 1
+fi
+
 # Experiment 1: Baseline measurements (no packet dropping)
 print_status "Experiment 1/3: Baseline measurements (no packet dropping)"
-if python3 run_measurements.py --mode off --runs-per-level 10; then
+if env DISPLAY="$DISPLAY" HOME="$HOME" USER="$USER" PATH="$PATH" python3 run_measurements.py --mode off --runs-per-level 10; then
     print_success "Baseline measurements completed"
 else
     print_error "Error during baseline measurements"
@@ -212,7 +237,7 @@ fi
 
 # Experiment 2: Fixed drop level measurements  
 print_status "Experiment 2/3: Fixed drop level measurements (0%, 1%, 2%, 5%, 10%, 20%)"
-if python3 run_measurements.py --mode fixed --levels "0,1,2,5,10,20" --runs-per-level 10; then
+if env DISPLAY="$DISPLAY" HOME="$HOME" USER="$USER" PATH="$PATH" python3 run_measurements.py --mode fixed --levels "0,1,2,5,10,20" --runs-per-level 10; then
     print_success "Fixed drop level measurements completed"
 else
     print_error "Error during fixed drop level measurements"
@@ -221,7 +246,7 @@ fi
 
 # Experiment 3: Dynamic packet dropping measurements
 print_status "Experiment 3/3: Dynamic packet dropping measurements"
-if python3 run_measurements.py --mode dynamic --runs-per-level 10 --dynamic-max-prob 50 --dynamic-min-pps 1000 --dynamic-max-pps 100000; then
+if env DISPLAY="$DISPLAY" HOME="$HOME" USER="$USER" PATH="$PATH" python3 run_measurements.py --mode dynamic --runs-per-level 10 --dynamic-max-prob 50 --dynamic-min-pps 1000 --dynamic-max-pps 100000; then
     print_success "Dynamic measurements completed"
 else
     print_error "Error during dynamic measurements"

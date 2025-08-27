@@ -238,6 +238,13 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     PCAPS_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Verifica capacità di entrare nel namespace (errore chiaro invece di 'Operation not permitted')
+    test_ns = subprocess.run(["ip", "netns", "exec", args.ns, "true"], capture_output=True)
+    if test_ns.returncode != 0:
+        raise SystemExit(f"Permesso negato per entrare nel namespace '{args.ns}'. "
+                         f"Esegui: sudo -E ./run_full_evaluation.sh (oppure avvia questo script con sudo -E). "
+                         f"Dettagli: {test_ns.stderr.decode().strip()}")
+
     # minimal preflight
     chrome = pick_chrome_binary()
     if args.quic_only:

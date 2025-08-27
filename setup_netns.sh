@@ -72,6 +72,15 @@ set -e
 
 if [[ $PING_OK -eq 0 && $DNS_OK -eq 0 && $HTTP_OK -eq 0 ]]; then
   echo "[✓] Namespace ${NS} ready: IP, DNS and HTTP working."
+  
+  # Test Chrome accessibility
+  echo "[*] Testing Chrome accessibility in namespace ${NS}"
+  if sudo ip netns exec "${NS}" google-chrome --version >/dev/null 2>&1; then
+    echo "[✓] Chrome accessible in namespace ${NS}"
+  else
+    echo "[!] Warning: Chrome not accessible in namespace ${NS}"
+    echo "    Make sure Chrome is installed and check file permissions"
+  fi
 else
   echo "[!] Warning: test failed (PING=${PING_OK}, DNS=${DNS_OK}, HTTP=${HTTP_OK})"
   echo "    Check: /etc/netns/${NS}/resolv.conf, NAT rules and ${HOST_IF} interface reachability."
