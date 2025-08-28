@@ -69,7 +69,7 @@ This will:
 - Set up network namespace
 - Compile eBPF programs
 - Run baseline measurements (no drops)
-- Run fixed drop rate experiments (0-20%)
+- Run fixed drop rate experiments (1-20%)
 - Run dynamic drop rate experiments
 - Analyze packet captures
 - Generate plots and statistics
@@ -107,11 +107,10 @@ python3 run_measurements.py [options]
 ```
 
 Available options:
-- `--urls-file`: URL list file (default: urls.txt)
-- `--out-dir`: Output directory (default: out/)
+- `--urls`: URL list file (default: urls.txt)
 - `--ns`: Network namespace (default: wfns)
-- `--mode`: Experiment mode (baseline/fixed/dynamic)
-- `--target-level`: Drop percentage for fixed mode
+- `--mode`: Experiment mode (off/fixed/dynamic)
+- `--levels`: Drop percentages for fixed mode (default: 0,1,2,5,10)
 - `--runs-per-level`: Repetitions per experiment
 
 ### 4. Analysis and Visualization
@@ -213,7 +212,7 @@ The evaluation system creates a controlled environment with three key components
 - **Minimal Overhead**: Kernel-space execution eliminates context switching costs
 
 **Defense Strategies**:
-1. **Fixed Drop Rate Mode**: Constant packet dropping percentages (0%, 5%, 10%, 15%, 20%)
+1. **Fixed Drop Rate Mode**: Constant packet dropping percentages (1%, 2%, 5%, 10%, 20%)
    - Evaluates uniform obfuscation effectiveness across all websites
 2. **Dynamic Drop Rate Mode**: Adaptive packet dropping based on traffic volume
    - Explores traffic-aware defenses that balance privacy and performance
@@ -245,9 +244,9 @@ API          (UDP/443)      Changes)         Duration
 
 **Experimental Matrix**:
 - **Test Websites**: Multiple URLs from `urls.txt`
-- **Defense Levels**: Baseline (0%) + Fixed rates (5%, 10%, 15%, 20%) + Dynamic
+- **Defense Levels**: Baseline (off) + Fixed rates (1%, 2%, 5%, 10%, 20%) + Dynamic
 - **Repetitions**: 10 runs per condition for statistical validity
-- **Total Measurements**: URLs × 6 defense levels × 10 repetitions
+- **Total Measurements**: URLs × 7 defense levels × 10 repetitions
 
 #### Quality Assurance Controls
 
