@@ -10,7 +10,7 @@ The framework evaluates two critical aspects: (1) how effectively packet droppin
 - [Project Structure](#project-structure) - Overview of components and files
 - [Usage Instructions](#usage-instructions) - Detailed execution options
 - [Output and Results](#output-and-results) - Understanding the generated data
-- [Technical Documentation](#technical-documentation) - System architecture and methodology
+- [Experimental Design and Methodology](#experimental-design-and-methodology) - System architecture and methodology
 - [License](#license)
 
 ---
@@ -172,29 +172,6 @@ The `out/` directory contains:
   - Time series plots demonstrating traffic obfuscation effectiveness
 
 ---
-
-## 🔧 Technical Documentation
-
-**For researchers, developers, and those interested in the methodology:**
-
-### Dependencies Installed by `install_dependencies.sh`
-
-**System packages:**
-- Basic development tools (build-essential, git, etc.)
-- Python 3.x with development packages
-- Chrome/Chromium browser and ChromeDriver
-- eBPF development tools (libbpf, clang, linux-headers)
-
-**Python packages:**
-- selenium, scapy, matplotlib, pandas, tqdm
-
-### System Requirements
-
-- **Operating System**: Ubuntu 22.04 (recommended)
-- **Privileges**: Root access required for network namespace setup and eBPF program loading
-- **Memory**: At least 4GB RAM recommended
-- **Disk Space**: ~2GB for dependencies, additional space for packet captures
-- **Network**: Internet connection for testing websites
 
 ## Experimental Design and Methodology
 
