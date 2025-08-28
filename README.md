@@ -216,23 +216,23 @@ The evaluation system creates a controlled environment where packet dropping can
 - 10% reserved for host system operations
 - This ensures consistent network conditions during measurements
 
-#### Packet Loss Simulation
+#### Traffic Obfuscation Defense
 
-**eBPF-Based Approach**: Traditional packet loss simulation tools (like `tc netem`) operate in userspace and can introduce timing artifacts. This framework uses eBPF (Extended Berkeley Packet Filter) programs that run directly in the kernel for precise packet manipulation:
+**eBPF-Based Approach**: This framework implements a privacy-preserving defense against website fingerprinting attacks by strategically dropping QUIC packets to obfuscate traffic patterns. Unlike traditional packet loss simulation tools, this uses eBPF (Extended Berkeley Packet Filter) programs that run directly in the kernel for precise traffic manipulation:
 
 - **Wire-Speed Processing**: Packet drop decisions are made at line rate without buffering delays
-- **Surgical Precision**: Only UDP packets on port 443 (QUIC traffic) are affected
+- **Surgical Precision**: Only UDP packets on port 443 (QUIC traffic) are affected to alter fingerprinting features
 - **Minimal System Impact**: Kernel-space execution eliminates context switching overhead
 
-**Two Experimental Modes**:
+**Two Defense Strategies**:
 
-1. **Fixed Drop Rate Mode**: Applies constant packet loss percentages (0%, 5%, 10%, 15%, 20%)
-   - Purpose: Establish direct correlation between loss rate and performance impact
-   - Use case: Understanding QUIC's resilience to different congestion levels
+1. **Fixed Drop Rate Mode**: Applies constant packet dropping percentages (0%, 5%, 10%, 15%, 20%)
+   - Purpose: Establish consistent traffic pattern obfuscation across all websites
+   - Use case: Evaluating the privacy-performance trade-off of uniform packet dropping defenses
 
-2. **Dynamic Drop Rate Mode**: Packet loss adapts based on traffic volume
-   - Purpose: Simulate realistic network congestion where higher traffic leads to more drops
-   - Use case: Understanding how QUIC performs under varying network load
+2. **Dynamic Drop Rate Mode**: Packet dropping adapts based on traffic volume
+   - Purpose: Implement adaptive obfuscation that responds to website traffic characteristics
+   - Use case: Understanding how traffic-aware defenses can balance privacy protection with performance
 
 ### Measurement Process
 
