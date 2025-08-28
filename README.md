@@ -146,9 +146,24 @@ The `out/` directory contains:
 
 ## Experimental Design and Methodology
 
-This framework investigates how controlled packet dropping can alter QUIC traffic patterns as a defense mechanism against website fingerprinting attacks, while measuring the performance impact of such traffic obfuscation techniques. The methodology follows rigorous measurement research principles to ensure reproducible and statistically valid results.
+### Research Objectives
 
-### System Architecture Overview
+This framework investigates **packet dropping as a defense mechanism against website fingerprinting attacks**. We evaluate two critical aspects: (1) **privacy protection** - how effectively controlled packet dropping obfuscates QUIC traffic patterns, and (2) **performance impact** - what costs this defense imposes on user experience. The methodology follows rigorous measurement research principles to ensure reproducible and statistically valid results.
+
+### Experimental Approach Overview
+
+Our approach creates a controlled environment where packet dropping can be precisely applied to QUIC traffic while measuring both traffic pattern obfuscation and web performance impacts. The key insight is that by isolating the network environment and controlling packet drops at the kernel level, we can quantify the privacy-performance trade-offs of traffic obfuscation defenses.
+
+**Experimental Flow**:
+```
+1. Environment Setup → 2. Baseline Measurement → 3. Defense Evaluation → 4. Analysis
+       │                        │                       │                   │
+       ▼                        ▼                       ▼                   ▼
+   Network                 No packet              Fixed & Dynamic        Statistical
+   Isolation               dropping               Drop Rates             Analysis
+```
+
+### System Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -172,186 +187,157 @@ This framework investigates how controlled packet dropping can alter QUIC traffi
            └─────────────┘
 ```
 
-### Experimental Flow
+The evaluation system creates a controlled environment with three key components:
 
+The evaluation system creates a controlled environment with three key components:
+
+#### 1. Network Isolation Layer
+
+**Purpose**: Eliminate external interference and ensure measurement reproducibility.
+
+**Implementation**: Linux network namespaces create a completely isolated network environment:
+- Dedicated virtual network interface (`veth0`/`veth1`) with controlled routing
+- NAT-based internet access while maintaining traffic isolation
+- Custom DNS configuration (1.1.1.1, 8.8.8.8) for consistent resolution
+- Bandwidth allocation: 90% for experimental traffic, 10% for host operations
+
+**Why Critical**: Web performance measurements are severely affected by background traffic, system processes, and variable network conditions. Isolation eliminates these confounding factors.
+
+#### 2. Traffic Obfuscation Defense (eBPF-Based Packet Dropping)
+
+**Purpose**: Implement privacy-preserving defense against website fingerprinting by strategically modifying QUIC traffic patterns.
+
+**Technical Implementation**: eBPF (Extended Berkeley Packet Filter) programs run directly in the kernel for precise traffic manipulation:
+- **Wire-Speed Processing**: Packet drop decisions at line rate without buffering delays
+- **Surgical Precision**: Only UDP packets on port 443 (QUIC) are affected
+- **Minimal Overhead**: Kernel-space execution eliminates context switching costs
+
+**Defense Strategies**:
+1. **Fixed Drop Rate Mode**: Constant packet dropping percentages (0%, 5%, 10%, 15%, 20%)
+   - Evaluates uniform obfuscation effectiveness across all websites
+2. **Dynamic Drop Rate Mode**: Adaptive packet dropping based on traffic volume
+   - Explores traffic-aware defenses that balance privacy and performance
+
+#### 3. Measurement and Analysis Framework
+
+**Browser Control**: Selenium WebDriver with Chrome configured for consistent, reproducible measurements:
+- Clean state for each test (incognito mode, disabled cache)
+- QUIC protocol enforcement and background process elimination
+- Navigation Timing API for precise performance data collection
+
+**Data Collection**: Simultaneous capture of performance metrics and traffic patterns:
+- **Performance**: Page Load Time (PLT), connection duration
+- **Traffic Obfuscation**: Packet counts, byte volumes, inter-arrival timing patterns
+
+### Experimental Protocol
+
+#### Measurement Design
+
+**Single Page Load Flow**:
 ```
-Setup → Pre-flight Checks → Baseline → Fixed Drop Rates → Dynamic Drop → Analysis
-  │           │                │           │                │            │
-  ▼           ▼                ▼           ▼                ▼            ▼
-Network     Browser          No drops    0-20% rates     Traffic-based  Statistics
-Namespace   Validation                                   congestion     & Plots
-```
-
-### Core Experimental Setup
-
-The evaluation system creates a controlled environment where packet dropping can be precisely applied to QUIC traffic to study traffic pattern obfuscation techniques while measuring their impact on web performance. The key insight is that by isolating the network environment and controlling packet drops at the kernel level, we can evaluate the effectiveness of traffic obfuscation defenses against website fingerprinting while quantifying their performance costs.
-
-#### Network Isolation Architecture
-
-**Why Isolation Matters**: Web performance measurements can be severely affected by background traffic, system processes, and variable network conditions. To eliminate these confounding factors, the framework creates a completely isolated network environment.
-
-**Implementation**: The system uses Linux network namespaces to create a separate network stack:
-- A dedicated virtual network interface (`veth0`/`veth1`) connects the isolated environment to the host
-- Custom routing ensures all test traffic flows through controlled paths
-- NAT provides internet access while maintaining isolation
-- DNS is configured to use reliable public servers (1.1.1.1, 8.8.8.8)
-
-**Traffic Prioritization**: The framework implements bandwidth allocation to prevent interference:
-- 90% bandwidth allocated to experimental traffic
-- 10% reserved for host system operations
-- This ensures consistent network conditions during measurements
-
-#### Traffic Obfuscation Defense
-
-**eBPF-Based Approach**: This framework implements a privacy-preserving defense against website fingerprinting attacks by strategically dropping QUIC packets to obfuscate traffic patterns. Unlike traditional packet loss simulation tools, this uses eBPF (Extended Berkeley Packet Filter) programs that run directly in the kernel for precise traffic manipulation:
-
-- **Wire-Speed Processing**: Packet drop decisions are made at line rate without buffering delays
-- **Surgical Precision**: Only UDP packets on port 443 (QUIC traffic) are affected to alter fingerprinting features
-- **Minimal System Impact**: Kernel-space execution eliminates context switching overhead
-
-**Two Defense Strategies**:
-
-1. **Fixed Drop Rate Mode**: Applies constant packet dropping percentages (0%, 5%, 10%, 15%, 20%)
-   - Purpose: Establish consistent traffic pattern obfuscation across all websites
-   - Use case: Evaluating the privacy-performance trade-off of uniform packet dropping defenses
-
-2. **Dynamic Drop Rate Mode**: Packet dropping adapts based on traffic volume
-   - Purpose: Implement adaptive obfuscation that responds to website traffic characteristics
-   - Use case: Understanding how traffic-aware defenses can balance privacy protection with performance
-
-### Measurement Process
-
-#### Single Page Load Measurement Flow
-
-```
-Browser loads page → eBPF drops packets → Capture traffic → Measure performance
-      │                      │                   │                │
-      ▼                      ▼                   ▼                ▼
-Navigation Timing      UDP/443 filtering    PCAP analysis    Page Load Time
+Load Page → Apply Defense → Capture Traffic → Measure Performance
+    │            │              │                 │
+    ▼            ▼              ▼                 ▼
+Navigation   eBPF Packet    PCAP Analysis    Page Load Time
+Timing       Dropping       (Pattern         & Connection
+API          (UDP/443)      Changes)         Duration
 ```
 
-#### Experimental Design
-
-- **Multiple websites** tested from `urls.txt`
-- **Packet loss levels**: 0%, 5%, 10%, 15%, 20%, Dynamic
+**Experimental Matrix**:
+- **Test Websites**: Multiple URLs from `urls.txt`
+- **Defense Levels**: Baseline (0%) + Fixed rates (5%, 10%, 15%, 20%) + Dynamic
 - **Repetitions**: 10 runs per condition for statistical validity
-- **Total measurements**: URLs × 6 levels × 10 repetitions
+- **Total Measurements**: URLs × 6 defense levels × 10 repetitions
 
-#### Browser Configuration and Control
+#### Quality Assurance Controls
 
-**Consistent Testing Environment**: Achieving reproducible web performance measurements requires eliminating browser-related variability. The framework uses Selenium WebDriver to control Chrome with carefully selected options:
+**Randomization**: URL testing order randomized to prevent temporal bias and learning effects
 
+**Baseline Reference**: Every experiment includes measurements without packet dropping for:
+- Reference performance under normal conditions
+- Calculation of relative performance degradation
+- Accounting for natural website performance variations
+
+**Browser Consistency**: Standardized Chrome configuration eliminates browser-related variability:
 ```bash
---enable-quic                    # Ensure QUIC protocol is used when available
---disable-extensions            # Remove browser extension overhead
---incognito                     # Start with clean state (no cache, cookies, history)
---disable-background-networking # Prevent interference from browser background processes
+--enable-quic                    # Ensure QUIC protocol usage
+--disable-extensions            # Remove extension overhead
+--incognito                     # Clean state per measurement
+--disable-background-networking # Prevent interference
 --disk-cache-size=1            # Force fresh network requests
---no-sandbox                   # Required for operation in network namespace
 ```
 
-**Why These Settings Matter**: 
-- Incognito mode ensures each measurement starts with a clean browser state
-- Disabled cache forces actual network traffic for every test
-- QUIC enablement ensures we're measuring the target protocol
-- Background process disabling prevents interference from browser telemetry
+### Data Collection and Metrics
 
-**Performance Data Collection**: The framework captures timing data through the browser's Navigation Timing API:
-- `performance.getEntriesByType('navigation')[0]` provides detailed timing breakdown
-- **Page Load Time (PLT)**: Calculated as `loadEventEnd - startTime`
-- Wall-clock timing provides independent validation of browser-reported metrics
+#### Performance Evaluation Metrics
 
-#### Network Traffic Analysis
+**Primary Metric**: **Page Load Time (PLT)** - calculated as `loadEventEnd - startTime`
+- Represents user-visible impact of the defense mechanism
+- Standardized metric enabling comparison across different websites
+- Captures cumulative effect of all network interactions during page loading
 
-**Packet Capture Strategy**: Simultaneous with browser measurements, the system captures all network traffic using tcpdump with a specific filter for QUIC traffic (`udp and port 443`). This captures both performance impacts and traffic pattern changes for obfuscation effectiveness analysis.
+**Supporting Metrics**:
+- **Connection Duration**: How long QUIC connections remain active under packet loss
+- **Wall-clock Timing**: Independent validation of browser-reported metrics
 
-**Metrics for Performance Evaluation**:
-- **Flow Duration**: How long the QUIC connection remains active under packet loss conditions
+#### Traffic Obfuscation Analysis Metrics
 
-**Metrics for Traffic Obfuscation Analysis**:
-- **Traffic Volume**: Total bytes and packet counts in both directions (reveals how packet dropping alters traffic fingerprinting features)
-- **Packet Timing**: Inter-arrival times show how the defense modifies temporal traffic patterns that could be used for website identification
+**Traffic Pattern Changes** (evaluating defense effectiveness):
+- **Traffic Volume**: Total bytes and packet counts in both directions
+- **Packet Timing**: Inter-arrival times showing temporal pattern modifications
+- **Flow Characteristics**: Connection duration changes affecting pattern recognition
 
-### Statistical Methodology
+**Data Capture Strategy**: Simultaneous packet capture using tcpdump with QUIC-specific filtering (`udp and port 443`) to analyze both performance impacts and obfuscation effectiveness.
 
-#### Experimental Controls
+### Statistical Analysis and Validation
 
-**Randomization**: URL order is randomized for each experimental run to prevent:
-- Temporal bias (network conditions changing over time)
-- Learning effects (browser or network caching across measurements)
-- Systematic ordering effects that could skew results
+#### Experimental Rigor
 
-**Replication Strategy**: Each experimental condition is repeated multiple times (default: 10 repetitions):
-- Provides sufficient data for statistical significance testing
-- Enables calculation of confidence intervals
-- Accounts for natural variability in web performance
+**Replication Strategy**: Multiple repetitions (default: 10 per condition) provide:
+- Sufficient data for statistical significance testing
+- Confidence interval calculation capability
+- Accounting for natural web performance variability
 
-**Baseline Establishment**: Every experiment includes measurements with packet dropping disabled ('Off' mode):
-- Provides reference performance under normal conditions
-- Enables calculation of relative performance degradation
-- Accounts for natural website performance variations
+**Statistical Controls**:
+- **Randomization**: URL order randomized to prevent temporal and learning effects
+- **Baseline Comparison**: Reference measurements without packet dropping
+- **Quality Assurance**: Structured data validation and error checking
 
-#### Data Structure and Quality Assurance
-
-**Structured Output**: The system generates standardized CSV files for analysis:
-
-```csv
-# Navigation timing data (nav_metrics.csv)
-mode,level,url,rep,pcap,plt_ms,t_wall_start,t_wall_end
-
-# Network statistics (summary.csv)
-url,level,rep,pcap,plt_ms,bytes_up,bytes_down,pkt_up,pkt_down,duration_s
-
-# Packet timing analysis (iat_up.csv, iat_down.csv)
-url,level,rep,iat_s
-```
-
-### Analysis and Interpretation
-
-#### Data Analysis Pipeline
+#### Data Processing Pipeline
 
 ```
-Raw Data → Processing → Statistical Analysis → Visualization
-   │           │              │                    │
-   ▼           ▼              ▼                    ▼
-CSV files   Filtering    Mean ± 95% CI        Bar Charts
-PCAP files  Validation   Significance         CDFs
-            Aggregation  Correlation          Time Series
+Raw Measurements → Validation → Statistical Analysis → Visualization
+       │              │             │                    │
+       ▼              ▼             ▼                    ▼
+   CSV Files      Filtering    Mean ± 95% CI         Bar Charts
+   PCAP Files     Validation   Significance          CDFs
+                  Aggregation  Testing               Time Series
 ```
 
-#### Performance Metrics
+**Output Structure**: Standardized CSV files enable reproducible analysis:
+- `nav_metrics.csv`: Navigation timing data
+- `summary.csv`: Network statistics and performance metrics  
+- `iat_up.csv/iat_down.csv`: Inter-arrival time distributions for obfuscation analysis
 
-**Primary Performance Measurement**: Page Load Time (PLT) serves as the main performance indicator because:
-- It represents the user-visible impact of network conditions
-- It's a standardized metric across different websites
-- It captures the cumulative effect of all network interactions during page loading
+#### Statistical Methods
 
-**Traffic Obfuscation Analysis Metrics**:
-- **Traffic Volume**: Packet counts and byte patterns (evaluates how effectively packet dropping alters fingerprinting features)
-- **Packet Timing Patterns**: Inter-arrival times analyze how packet loss modifies temporal traffic characteristics
-- **Connection Duration**: Flow timing changes that affect traffic pattern recognition
-
-**Supporting Performance Metrics**:
-- **Connection Duration**: How long QUIC maintains connections (reveals protocol efficiency under packet loss)
-
-#### Statistical Analysis Approach
-
-**Confidence Intervals**: All results include 95% confidence intervals calculated using standard error methods. This provides:
-- Statistical rigor for comparing different experimental conditions
+**Confidence Intervals**: All results include 95% confidence intervals using standard error methods for:
+- Statistical rigor in comparing experimental conditions
 - Clear indication of measurement uncertainty
-- Basis for determining statistically significant differences
+- Determination of statistically significant differences
 
-**Comparative Visualization**:
-- **Bar Charts**: Show mean performance with error bars for direct comparison across packet loss levels
-- **Cumulative Distribution Functions (CDFs)**: Reveal the full distribution of performance measurements  
-- **Time Series Analysis**: Inter-arrival time plots demonstrate how the packet dropping defense alters traffic timing patterns for obfuscation
+**Visualization Approaches**:
+- **Bar Charts**: Mean performance comparison with error bars across packet loss levels
+- **Cumulative Distribution Functions (CDFs)**: Full distribution analysis of measurements
+- **Time Series**: Inter-arrival time patterns demonstrating traffic obfuscation effectiveness
 
-### Research Applications and Insights
+### Research Questions and Applications
 
-This experimental framework enables investigation of several important questions about traffic obfuscation and privacy-preserving web browsing:
+This experimental framework enables investigation of critical questions in privacy-preserving web browsing:
 
-**Performance Impact Analysis**: How does packet dropping as a defense mechanism affect user experience?
-**Traffic Obfuscation Effectiveness**: How successfully does controlled packet loss alter traffic patterns that could be used for website fingerprinting?
+1. **Performance Impact**: What is the user experience cost of packet dropping defenses?
+2. **Obfuscation Effectiveness**: How successfully does controlled packet loss alter traffic patterns used for website fingerprinting?
+3. **Defense Optimization**: What is the optimal balance between privacy protection and performance degradation?
 
 
 ## License
