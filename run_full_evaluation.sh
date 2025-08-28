@@ -12,9 +12,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Richiede privilegi root per ip netns exec / eBPF / tcpdump
+# Requires root privileges for ip netns exec / eBPF / tcpdump
 if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
-    echo -e "${YELLOW}[WARNING] Esecuzione non come root: riavvio con sudo -E...${NC}"
+    echo -e "${YELLOW}[WARNING] Not running as root: restarting with sudo -E...${NC}"
     exec sudo -E env PATH="$PATH" "$0" "$@"
 fi
 

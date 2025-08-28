@@ -28,18 +28,18 @@ def clean_namespace(ns: str):
     """Clean the namespace from experiment processes (lightweight with traffic control active)"""
     print(f"[INFO] Cleaning namespace {ns}...")
     
-    # Pattern essenziali per processi esperimento (semplificato con TC attivo)
+    # Essential patterns for experiment processes (simplified with TC active)
     patterns = [
-        "chrome.*--enable-quic",  # Chrome esperimenti
-        "chromedriver",           # Driver Selenium  
-        "tcpdump.*veth1"         # Capture precedenti
+        "chrome.*--enable-quic",  # Chrome experiments
+        "chromedriver",           # Selenium driver  
+        "tcpdump.*veth1"         # Previous captures
     ]
     
-    # Cleanup rapido e sicuro
+    # Quick and safe cleanup
     for pattern in patterns:
         ns_sh(ns, f"pkill -f '{pattern}' 2>/dev/null || true")
     
-    # Breve pausa per cleanup
+    # Short pause for cleanup
     time.sleep(0.5)
     print(f"[SUCCESS] Namespace {ns} cleaned")
 
@@ -48,7 +48,7 @@ def setup_traffic_control():
     """Setup traffic control to isolate experiment traffic from host interference"""
     print("[INFO] Setting up traffic control for experiment isolation...")
     
-    # Trova l'interfaccia WAN principale
+    # Find main WAN interface
     wan_if = sh("ip route get 1.1.1.1 | awk '/dev/ {print $5; exit}'").stdout.strip()
     if not wan_if:
         print("[WARNING] Could not detect WAN interface, skipping traffic control")
@@ -56,17 +56,17 @@ def setup_traffic_control():
     
     print(f"[INFO] Applying traffic control on interface: {wan_if}")
     
-    # Crea gerarchia di traffic shaping
-    # - Classe prioritaria per traffico namespace (90% banda)
-    # - Classe limitata per traffico host (10% banda)
+    # Create traffic shaping hierarchy
+    # - Priority class for namespace traffic (90% bandwidth)
+    # - Limited class for host traffic (10% bandwidth)
     commands = [
         f"tc qdisc add dev {wan_if} root handle 1: htb default 30",
         f"tc class add dev {wan_if} parent 1: classid 1:1 htb rate 100mbit",
-        f"tc class add dev {wan_if} parent 1:1 classid 1:10 htb rate 90mbit ceil 95mbit",  # Namespace (prioritario)
-        f"tc class add dev {wan_if} parent 1:1 classid 1:30 htb rate 10mbit ceil 20mbit",  # Host (limitato)
-        # Filtra traffico dal subnet namespace (10.200.0.0/24) -> alta priorità
+        f"tc class add dev {wan_if} parent 1:1 classid 1:10 htb rate 90mbit ceil 95mbit",  # Namespace (priority)
+        f"tc class add dev {wan_if} parent 1:1 classid 1:30 htb rate 10mbit ceil 20mbit",  # Host (limited)
+        # Filter traffic from namespace subnet (10.200.0.0/24) -> high priority
         f"tc filter add dev {wan_if} parent 1: protocol ip prio 1 u32 match ip src 10.200.0.0/24 classid 1:10",
-        # Tutto il resto (traffico host) -> classe limitata
+        # Everything else (host traffic) -> limited class
         f"tc filter add dev {wan_if} parent 1: protocol ip prio 2 u32 match ip src 0.0.0.0/0 classid 1:30"
     ]
     
@@ -309,9 +309,9 @@ def main():
     # Verifica capacità di entrare nel namespace (errore chiaro invece di 'Operation not permitted')
     test_ns = subprocess.run(["ip", "netns", "exec", args.ns, "true"], capture_output=True)
     if test_ns.returncode != 0:
-        raise SystemExit(f"Permesso negato per entrare nel namespace '{args.ns}'. "
-                         f"Esegui: sudo -E ./run_full_evaluation.sh (oppure avvia questo script con sudo -E). "
-                         f"Dettagli: {test_ns.stderr.decode().strip()}")
+        raise SystemExit(f"Permission denied to enter namespace '{args.ns}'. "
+                         f"Run: sudo -E ./run_full_evaluation.sh (or start this script with sudo -E). "
+                         f"Details: {test_ns.stderr.decode().strip()}")
 
     # minimal preflight
     chrome = pick_chrome_binary()

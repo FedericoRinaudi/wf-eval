@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =======================================================================
-# Script per pulire il namespace wfns dai processi in background
+# Script to clean wfns namespace from background processes
 # =======================================================================
 
 RED='\033[0;31m'
@@ -29,15 +29,15 @@ print_error() {
 
 NS="wfns"
 
-# Verifica se il namespace esiste
+# Check if namespace exists
 if ! sudo ip netns list | grep -q "^${NS}\b"; then
-    print_error "Namespace ${NS} non trovato"
+    print_error "Namespace ${NS} not found"
     exit 1
 fi
 
-print_status "Pulizia del namespace ${NS}..."
+print_status "Cleaning namespace ${NS}..."
 
-# Lista di pattern molto specifici per i processi da terminare SOLO nel contesto esperimenti
+# List of very specific patterns for processes to terminate ONLY in experiment context
 SAFE_PATTERNS=(
     "chrome --enable-quic"
     "chrome --headless"
@@ -54,38 +54,38 @@ SAFE_PATTERNS=(
     "tcpdump -i veth1"
 )
 
-# Termina solo processi specifici e sicuri
+# Terminate only specific and safe processes
 for pattern in "${SAFE_PATTERNS[@]}"; do
     if sudo ip netns exec "${NS}" pgrep -f "${pattern}" >/dev/null 2>&1; then
-        print_status "Terminazione processi: ${pattern}..."
+        print_status "Terminating processes: ${pattern}..."
         sudo ip netns exec "${NS}" pkill -f "${pattern}" || true
         sleep 0.5
     fi
 done
 
-# NON uccidere tutti i processi utente - troppo pericoloso!
-# Invece, mostra solo quali processi sono ancora attivi per il debug
-print_status "Processi ancora attivi nel namespace:"
+# DON'T kill all user processes - too dangerous!
+# Instead, only show which processes are still active for debugging
+print_status "Processes still active in namespace:"
 sudo ip netns exec "${NS}" ps aux --no-headers 2>/dev/null | grep -v "^root.*\[" | head -10 || true
 
-# Verifica connessioni attive
+# Check active connections
 ACTIVE_CONNECTIONS=$(sudo ip netns exec "${NS}" ss -tupln 2>/dev/null | wc -l)
 if [[ $ACTIVE_CONNECTIONS -gt 1 ]]; then
-    print_warning "Connessioni ancora attive:"
+    print_warning "Connections still active:"
     sudo ip netns exec "${NS}" ss -tupln
 else
-    print_success "Nessuna connessione attiva nel namespace"
+    print_success "No active connections in namespace"
 fi
 
-# Test finale: verifica solo le connessioni attive (test rapido)
-print_status "Verifica finale dello stato del namespace..."
+# Final test: check only active connections (quick test)
+print_status "Final verification of namespace state..."
 
 FINAL_CONNECTIONS=$(sudo ip netns exec "${NS}" ss -tupln 2>/dev/null | wc -l)
 if [[ $FINAL_CONNECTIONS -gt 1 ]]; then
-    print_warning "Ancora $((FINAL_CONNECTIONS-1)) connessioni attive dopo la pulizia:"
+    print_warning "Still $((FINAL_CONNECTIONS-1)) active connections after cleanup:"
     sudo ip netns exec "${NS}" ss -tupln | head -5
 else
-    print_success "Namespace completamente pulito - nessuna connessione attiva"
+    print_success "Namespace completely clean - no active connections"
 fi
 
-print_success "Pulizia del namespace ${NS} completata"
+print_success "Namespace ${NS} cleanup completed"

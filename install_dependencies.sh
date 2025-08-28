@@ -93,17 +93,17 @@ install_python_dependencies() {
 install_chrome_and_chromedriver() {
     print_status "Installing specific Chrome and ChromeDriver versions..."
     
-    # Versioni specifiche
+    # Specific versions
     CHROME_VERSION="138.0.7204.100"
     CHROMEDRIVER_VERSION="138.0.7204.183"
     
-    # Installa Chrome versione specifica
+    # Install specific Chrome version
     print_status "Installing Google Chrome ${CHROME_VERSION}"
     wget -q -O /tmp/chrome.deb "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}-1_amd64.deb"
     sudo dpkg -i /tmp/chrome.deb || sudo apt-get install -f -y
     rm -f /tmp/chrome.deb
     
-    # Installa ChromeDriver versione specifica
+    # Install specific ChromeDriver version
     print_status "Installing ChromeDriver ${CHROMEDRIVER_VERSION}"
     wget -q -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip"
     sudo unzip -o /tmp/chromedriver.zip -d /tmp/
@@ -147,42 +147,42 @@ create_output_directories() {
 verify_installation() {
     print_status "Verifying installation..."
     
-    # Verifica Python
+    # Verify Python
     if python3 --version >/dev/null 2>&1; then
         print_success "Python3: $(python3 --version)"
     else
         print_error "Python3 not found"
     fi
     
-    # Verifica Chrome
+    # Verify Chrome
     if google-chrome --version >/dev/null 2>&1; then
         print_success "Chrome: $(google-chrome --version)"
     else
         print_error "Google Chrome not found"
     fi
     
-    # Verifica ChromeDriver
+    # Verify ChromeDriver
     if chromedriver --version >/dev/null 2>&1; then
         print_success "ChromeDriver: $(chromedriver --version)"
     else
         print_error "ChromeDriver not found"
     fi
     
-    # Verifica Clang
+    # Verify Clang
     if clang --version >/dev/null 2>&1; then
         print_success "Clang: $(clang --version | head -1)"
     else
         print_error "Clang not found"
     fi
     
-    # Verifica tcpdump
+    # Verify tcpdump
     if tcpdump --version >/dev/null 2>&1; then
         print_success "tcpdump available"
     else
         print_error "tcpdump not found"
     fi
     
-    # Verifica eBPF loader
+    # Verify eBPF loader
     if [[ -f "ebpf/loader" ]]; then
         print_success "eBPF loader built"
     else
