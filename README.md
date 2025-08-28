@@ -13,6 +13,7 @@ The tool simulates network conditions by dropping UDP packets at various rates a
 - **`run_full_evaluation.sh`** - Main orchestration script that runs the complete evaluation pipeline
 - **`install_dependencies.sh`** - Automated dependency installation for Ubuntu 22.04
 - **`setup_netns.sh`** - Network namespace setup for traffic isolation
+- **`clean_netns.sh`** - Network namespace cleanup and process termination
 - **`run_measurements.py`** - Core measurement script using Selenium WebDriver
 - **`analyse_pcaps.py`** - Packet capture analysis for network metrics
 - **`plot_results.py`** - Statistical analysis and visualization generation
@@ -40,6 +41,7 @@ First, make the scripts executable:
 chmod +x install_dependencies.sh
 chmod +x run_full_evaluation.sh
 chmod +x setup_netns.sh
+chmod +x clean_netns.sh
 ```
 
 ### 2. Install Dependencies
@@ -122,6 +124,13 @@ python3 analyse_pcaps.py
 python3 plot_results.py
 ```
 
+### 5. Cleanup (Optional)
+
+```bash
+# Clean namespace from background processes if needed
+./clean_netns.sh
+```
+
 ## Output Structure
 
 After running the evaluation, the `out/` directory contains:
@@ -187,6 +196,9 @@ The tool measures:
    # Reset network setup
    sudo ip netns del wfns
    ./setup_netns.sh
+   
+   # Or clean active processes in namespace
+   ./clean_netns.sh
    ```
 
 4. **Permission errors**:
@@ -199,6 +211,15 @@ The tool measures:
    ```bash
    # Make scripts executable
    chmod +x *.sh
+   ```
+
+6. **Orphaned processes in namespace**:
+   ```bash
+   # Clean specific experiment processes
+   ./clean_netns.sh
+   
+   # Check processes in namespace
+   sudo ip netns exec wfns ps aux
    ```
 
 ### Debug Mode
