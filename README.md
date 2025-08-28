@@ -253,11 +253,6 @@ API          (UDP/443)      Changes)         Duration
 
 **Randomization**: URL testing order randomized to prevent temporal bias and learning effects
 
-**Baseline Reference**: Every experiment includes measurements without packet dropping for:
-- Reference performance under normal conditions
-- Calculation of relative performance degradation
-- Accounting for natural website performance variations
-
 **Browser Consistency**: Standardized Chrome configuration eliminates browser-related variability:
 ```bash
 --enable-quic                    # Ensure QUIC protocol usage
