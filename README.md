@@ -2,9 +2,7 @@
 
 This project evaluates packet dropping defenses against website fingerprinting attacks, measuring both their effectiveness at traffic pattern obfuscation and their impact on web performance using eBPF-based packet manipulation, automated browser measurement, and statistical analysis.
 
-## Overview
-
-The tool implements controlled packet dropping techniques to obfuscate QUIC traffic patterns as a defense against website fingerprinting attacks, while measuring the performance impact of such privacy-preserving modifications. It evaluates two aspects: (1) how effectively packet dropping alters traffic patterns for privacy protection, and (2) what performance costs this defense imposes on users. The framework uses eBPF programs for precise packet manipulation, Selenium WebDriver for automated browsing, and network namespaces for traffic isolation.
+The framework evaluates two critical aspects: (1) how effectively packet dropping alters traffic patterns for privacy protection, and (2) what performance costs this defense imposes on users. It uses eBPF programs for precise packet manipulation, Selenium WebDriver for automated browsing, and network namespaces for traffic isolation.
 
 ## Project Structure
 
@@ -139,10 +137,6 @@ The `out/` directory contains:
 - **`pcaps/`** - Raw packet captures for detailed analysis
 - **`plots/`** - Generated visualizations (bar charts and CDFs)
 
-**Performance Metrics**: Page Load Time, Flow Duration  
-**Traffic Obfuscation Metrics**: Network Traffic (bytes/packets), Inter-arrival Times
-
-
 ## Experimental Design and Methodology
 
 ### Research Objectives
@@ -185,10 +179,6 @@ Our approach creates a controlled environment where packet dropping can be preci
            │ (Test Sites)│
            └─────────────┘
 ```
-
-The evaluation system creates a controlled environment with three key components:
-
-The evaluation system creates a controlled environment with three key components:
 
 #### 1. Network Isolation Layer
 
@@ -306,8 +296,6 @@ Raw Measurements → Validation → Statistical Analysis → Visualization
    CSV Files      Filtering    Mean ± 95% CI         Bar Charts
    PCAP Files     Validation   Significance          CDFs
                   Aggregation  Testing               Time Series
-```
-
 **Output Structure**: Standardized CSV files enable reproducible analysis:
 - `nav_metrics.csv`: Navigation timing data
 - `summary.csv`: Network statistics and performance metrics  
