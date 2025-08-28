@@ -4,7 +4,7 @@ This project evaluates the impact of packet dropping on web traffic performance 
 
 ## Overview
 
-The tool simulates network conditions by dropping UDP packets at various rates and measures how this affects web page loading performance. It uses eBPF programs for packet manipulation, Selenium WebDriver for automated browsing, and network namespaces for isolation.
+The tool implements controlled packet dropping techniques to obfuscate QUIC traffic patterns as a defense against website fingerprinting attacks, while measuring the performance impact of such privacy-preserving modifications. It uses eBPF programs for precise packet manipulation, Selenium WebDriver for automated browsing, and network namespaces for traffic isolation.
 
 ## Project Structure
 
@@ -161,106 +161,45 @@ If you use this tool in research, please include appropriate attribution and con
 
 ## Experimental Design and Methodology
 
-This framework quantifies how packet loss affects QUIC protocol performance through controlled network experiments. The methodology follows rigorous measurement research principles to ensure reproducible and statistically valid results.
+This framework investigates how controlled packet dropping can alter QUIC traffic patterns as a defense mechanism against website fingerprinting attacks, while measuring the performance impact of such traffic obfuscation techniques. The methodology follows rigorous measurement research principles to ensure reproducible and statistically valid results.
 
 ### System Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              HOST SYSTEM                                        │
-│                                                                                 │
-│  ┌─────────────────────────────────────────────────────────────────────────┐    │
-│  │                        NETWORK NAMESPACE (wfns)                         │    │
-│  │                                                                         │    │
-│  │  ┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐    │    │
-│  │  │   Chrome Browser │    │  eBPF Program   │    │   Packet Capture │    │    │
-│  │  │  + Selenium WD   │    │ (Packet Dropper)│    │    (tcpdump)     │    │    │
-│  │  │                  │    │                 │    │                  │    │    │
-│  │  │ ┌──────────────┐ │    │ ┌─────────────┐ │    │ ┌──────────────┐ │    │    │
-│  │  │ │ Navigation   │ │    │ │ UDP/443     │ │    │ │ QUIC Traffic │ │    │    │
-│  │  │ │ Timing API   │ │    │ │ Filter &    │ │    │ │ Analysis     │ │    │    │
-│  │  │ │              │ │    │ │ Drop Logic  │ │    │ │              │ │    │    │
-│  │  │ └──────────────┘ │    │ └─────────────┘ │    │ └──────────────┘ │    │    │
-│  │  └──────────────────┘    └─────────────────┘    └──────────────────┘    │    │
-│  │                                    │                                    │    │
-│  │  ┌─────────────────────────────────▼────────────────────────────────┐   │    │
-│  │  │                     VIRTUAL NETWORK INTERFACE (veth0)            │   │    │
-│  │  │                      IP: 192.168.1.2/24                          │   │    │
-│  │  └──────────────────────────────────────────────────────────────────┘   │    │
-│  └─────────────────────────────────────────────────────────────────────────┘    │
-│                                      │                                          │
-│  ┌─────────────────────────────────────▼───────────────────────────────────┐    │
-│  │                     HOST NETWORK INTERFACE (veth1)                      │    │
-│  │                           IP: 192.168.1.1/24                            │    │
-│  │                                                                         │    │
-│  │  ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐    │    │
-│  │  │ Traffic Control │     │ NAT/Masquerade  │     │ Bandwidth Limit │    │    │
-│  │  │ (HTB Queuing)   │     │ (iptables)      │     │ (90% experiment)│    │    │
-│  │  └─────────────────┘     └─────────────────┘     └─────────────────┘    │    │
-│  └─────────────────────────────────────────────────────────────────────────┘    │
-│                                      │                                          │
-└──────────────────────────────────────┼──────────────────────────────────────────┘
-                                       │
-                              ┌────────▼────────┐
-                              │    INTERNET     │
-                              │   (Test Sites)  │
-                              │                 │
-                              │ • google.com    │
-                              │ • facebook.com  │
-                              │ • youtube.com   │
-                              │ • amazon.com    │
-                              │ • ...           │
-                              └─────────────────┘
+┌─────────────────────────────────────────────┐
+│            NETWORK NAMESPACE                │
+│                                             │
+│  ┌─────────────┐  ┌─────────────┐           │
+│  │   Browser   │  │ eBPF Packet │           │
+│  │   + Selenium│  │ Dropper     │           │
+│  │             │  │ (UDP/443)   │           │
+│  └─────────────┘  └─────────────┘           │
+│         │                 │                 │
+│         ▼                 ▼                 │
+│  ┌─────────────────────────────────────────┐│
+│  │      Network Interface (veth)           ││
+│  └─────────────────────────────────────────┘│
+└─────────────────┬───────────────────────────┘
+                  │
+           ┌──────▼──────┐
+           │  INTERNET   │
+           │ (Test Sites)│
+           └─────────────┘
 ```
 
-### Experimental Flow Diagram
+### Experimental Flow
 
 ```
-START
-  │
-  ▼
-┌─────────────────────────┐
-│   Setup Environment     │
-│ • Create namespace      │
-│ • Configure network     │
-│ • Compile eBPF          │
-└─────────┬───────────────┘
-          │
-          ▼
-┌─────────────────────────┐
-│  Pre-flight Checks      │
-│ • Connectivity test     │
-│ • Browser validation    │
-│ • QUIC support check    │
-└─────────┬───────────────┘
-          │
-          ▼
-┌─────────────────────────┐      ┌─────────────────────────┐
-│   Baseline Mode         │      │    Fixed Drop Mode      │
-│ • No packet dropping    │ ────▶│ • 0%, 5%, 10%, 15%, 20% │
-│ • Reference measurements│      │ • Multiple repetitions  │
-└─────────┬───────────────┘      └─────────┬───────────────┘
-          │                                │
-          ▼                                ▼
-┌─────────────────────────┐      ┌─────────────────────────┐
-│   Dynamic Drop Mode     │      │    Data Collection      │ 
-│ • Traffic-based drops   │ ────▶│ • Page load times       │
-│ • Realistic congestion  │      │ • Network statistics    │
-└─────────┬───────────────┘      │ • Packet captures       │
-          │                      └─────────┬───────────────┘
-          │                                │
-          ▼                                ▼
-┌─────────────────────────┐      ┌─────────────────────────┐
-│     Analysis Phase      │      │   Generate Results      │
-│ • Statistical analysis  │ ────▶│ • Performance plots     │
-│ • Confidence intervals  │      │ • Summary statistics    │
-│ • Protocol behavior     │      │ • Research insights     │
-└─────────────────────────┘      └─────────────────────────┘
+Setup → Pre-flight Checks → Baseline → Fixed Drop Rates → Dynamic Drop → Analysis
+  │           │                │           │                │            │
+  ▼           ▼                ▼           ▼                ▼            ▼
+Network     Browser          No drops    0-20% rates     Traffic-based  Statistics
+Namespace   Validation                                   congestion     & Plots
 ```
 
 ### Core Experimental Setup
 
-The evaluation system creates a controlled environment where packet loss can be precisely applied to web traffic while measuring its impact on page loading performance. The key insight is that by isolating the network environment and controlling packet drops at the kernel level, we can establish clear cause-and-effect relationships between network conditions and web performance.
+The evaluation system creates a controlled environment where packet dropping can be precisely applied to QUIC traffic to study traffic pattern obfuscation techniques while measuring their impact on web performance. The key insight is that by isolating the network environment and controlling packet drops at the kernel level, we can evaluate the effectiveness of traffic obfuscation defenses against website fingerprinting while quantifying their performance costs.
 
 #### Network Isolation Architecture
 
@@ -300,55 +239,18 @@ The evaluation system creates a controlled environment where packet loss can be 
 #### Single Page Load Measurement Flow
 
 ```
-Time →  0ms    100ms   200ms   300ms   ...   5000ms   END
-        │       │       │       │       │      │      │
-        ▼       ▼       ▼       ▼       ▼      ▼      ▼
-┌───────────────────────────────────────────────────────────┐
-│                  BROWSER TIMELINE                         │
-│ Start → DNS → Connect → TLS → Request → Response → Load   │
-└───────────────────────────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────────────────────────┐
-│                  EBPF PACKET DROPPING                     │
-│ ████░░██░░█████░░░██░░░░███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
-│ █ = Packet Passed    ░ = Packet Dropped                   │
-└───────────────────────────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────────────────────────┐
-│                  PACKET CAPTURE                           │
-│ UDP/443: [SYN] [ACK] [DATA] [DATA] [FIN] ...              │
-│ Bytes: 1.2MB Up, 3.4MB Down                               │
-│ Packets: 234 Up, 567 Down                                 │
-└───────────────────────────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────────────────────────┐
-│                  DATA COLLECTION                          │
-│ • Page Load Time: 3.2 seconds                             │
-│ • Navigation Timing: detailed breakdown                   │
-│ • Network Metrics: volume, duration, timing               │
-│ • Quality Checks: non-empty capture, successful load      │
-└───────────────────────────────────────────────────────────┘
+Browser loads page → eBPF drops packets → Capture traffic → Measure performance
+      │                      │                   │                │
+      ▼                      ▼                   ▼                ▼
+Navigation Timing      UDP/443 filtering    PCAP analysis    Page Load Time
 ```
 
-#### Multi-Site Experimental Matrix
+#### Experimental Design
 
-```
-                    Packet Loss Levels
-URLs          │ 0%  │ 5%  │ 10% │ 15% │ 20% │ Dynamic │
-──────────────┼─────┼─────┼─────┼─────┼─────┼─────────┤
-google.com    │ 10x │ 10x │ 10x │ 10x │ 10x │   10x   │
-facebook.com  │ 10x │ 10x │ 10x │ 10x │ 10x │   10x   │
-youtube.com   │ 10x │ 10x │ 10x │ 10x │ 10x │   10x   │
-amazon.com    │ 10x │ 10x │ 10x │ 10x │ 10x │   10x   │
-...           │ ... │ ... │ ... │ ... │ ... │   ...   │
-
-Legend: 10x = 10 repetitions per condition
-Total measurements: URLs × Levels × Repetitions
-Example: 20 URLs × 6 levels × 10 reps = 1,200 measurements
-```
+- **Multiple websites** tested from `urls.txt`
+- **Packet loss levels**: 0%, 5%, 10%, 15%, 20%, Dynamic
+- **Repetitions**: 10 runs per condition for statistical validity
+- **Total measurements**: URLs × 6 levels × 10 repetitions
 
 #### Browser Configuration and Control
 
@@ -432,34 +334,12 @@ url,level,rep,iat_s
 #### Data Analysis Pipeline
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Raw Data Files │    │ Data Processing │    │ Statistical     │
-│                 │    │                 │    │ Analysis        │
-│ • nav_metrics   │───▶│ • Aggregation   │───▶│                 │
-│ • summary.csv   │    │ • Filtering     │    │ • Mean ± 95% CI │
-│ • iat_*.csv     │    │ • Validation    │    │ • Significance  │
-│ • pcap files    │    │ • Normalization │    │ • Correlation   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                       │
-                                                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     VISUALIZATION OUTPUTS                       │
-│                                                                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   Bar Charts    │  │      CDFs       │  │  Time Series    │  │
-│  │                 │  │                 │  │                 │  │
-│  │ PLT vs Loss %   │  │ Performance     │  │ Inter-arrival   │  │
-│  │ ┌─┐ ┌─┐ ┌─┐ ┌─┐ │  │ Distribution    │  │ Time Patterns   │  │
-│  │ │ │ │ │ │ │ │ │ │  │                 │  │                 │  │
-│  │ └─┘ └─┘ └─┘ └─┘ │  │                 │  │                 │  │
-│  │ 0% 5% 10% 15%   │  │                 │  │                 │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-│                                                                 │
-│  Performance Impact:           Protocol Behavior:               │
-│  • Baseline comparison         • Congestion response            │
-│  • Degradation thresholds      • Retry patterns                 │
-│  • Statistical significance    • Flow characteristics           │
-└─────────────────────────────────────────────────────────────────┘
+Raw Data → Processing → Statistical Analysis → Visualization
+   │           │              │                    │
+   ▼           ▼              ▼                    ▼
+CSV files   Filtering    Mean ± 95% CI        Bar Charts
+PCAP files  Validation   Significance         CDFs
+            Aggregation  Correlation          Time Series
 ```
 
 #### Performance Metrics
@@ -488,36 +368,7 @@ url,level,rep,iat_s
 
 ### Research Applications and Insights
 
-This experimental framework enables investigation of several important questions about modern web performance:
-
-#### Core Research Questions
-
-1. **QUIC Resilience**: How much packet loss can QUIC tolerate before performance significantly degrades?
-   - Baseline measurements establish normal performance
-   - Fixed drop rate experiments reveal degradation thresholds
-   - Results inform network capacity planning
-
-2. **Protocol Adaptation**: How does QUIC modify its behavior under different network conditions?
-   - Packet timing analysis reveals congestion control responses
-   - Traffic volume changes show protocol adaptation strategies
-   - Connection duration patterns indicate retry and timeout behaviors
-
-3. **Website Variability**: Do different websites respond differently to identical network conditions?
-   - Multi-site measurements reveal implementation differences
-   - Content type effects (video, images, text) become apparent
-   - CDN and server infrastructure impacts are measurable
-
-#### Practical Applications
-
-**Network Planning**: Results help network operators understand:
-- What packet loss levels are acceptable for good web performance
-- How much bandwidth is needed to maintain quality of experience
-- Where to invest in infrastructure improvements
-
-**Protocol Development**: Insights inform QUIC protocol improvements:
-- Identifying scenarios where performance degrades unexpectedly
-- Understanding how different congestion control algorithms perform
-- Revealing opportunities for protocol optimization
+This experimental framework enables investigation of several important questions about traffic obfuscation and privacy-preserving web browsing:
 
 ### Experimental Validation and Limitations
 
