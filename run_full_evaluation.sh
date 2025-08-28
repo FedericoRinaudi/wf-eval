@@ -226,7 +226,7 @@ if ! python3 -c "from selenium import webdriver; print('Selenium import OK')" 2>
     exit 1
 fi
 
-# Experiment 1: Baseline measurements (no packet dropping)
+# Experiment 1: Baseline measurements (no eBPF, truly off)
 print_status "Experiment 1/3: Baseline measurements (no packet dropping)"
 if env DISPLAY="$DISPLAY" HOME="$HOME" USER="$USER" PATH="$PATH" python3 run_measurements.py --mode off --runs-per-level 10; then
     print_success "Baseline measurements completed"
@@ -235,9 +235,9 @@ else
     exit 1
 fi
 
-# Experiment 2: Fixed drop level measurements  
-print_status "Experiment 2/3: Fixed drop level measurements (0%, 1%, 2%, 5%, 10%, 20%)"
-if env DISPLAY="$DISPLAY" HOME="$HOME" USER="$USER" PATH="$PATH" python3 run_measurements.py --mode fixed --levels "0,1,2,5,10,20" --runs-per-level 10; then
+# Experiment 2: Fixed drop level measurements (skip 0% since we have baseline)
+print_status "Experiment 2/3: Fixed drop level measurements (1%, 2%, 5%, 10%, 20%)"
+if env DISPLAY="$DISPLAY" HOME="$HOME" USER="$USER" PATH="$PATH" python3 run_measurements.py --mode fixed --levels "1,2,5,10,20" --runs-per-level 10; then
     print_success "Fixed drop level measurements completed"
 else
     print_error "Error during fixed drop level measurements"

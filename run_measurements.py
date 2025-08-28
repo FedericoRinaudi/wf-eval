@@ -23,6 +23,72 @@ def ns_sh(ns: str, cmd: str):
 def run_in_ns(ns: str, cmd: str, env=None):
     return subprocess.Popen(f"ip netns exec {shlex.quote(ns)} {cmd}", shell=True, env=env, preexec_fn=os.setsid)
 
+# -------------------------- Namespace utilities --------------------------
+def clean_namespace(ns: str):
+    """Clean the namespace from experiment processes (lightweight with traffic control active)"""
+    print(f"[INFO] Cleaning namespace {ns}...")
+    
+    # Pattern essenziali per processi esperimento (semplificato con TC attivo)
+    patterns = [
+        "chrome.*--enable-quic",  # Chrome esperimenti
+        "chromedriver",           # Driver Selenium  
+        "tcpdump.*veth1"         # Capture precedenti
+    ]
+    
+    # Cleanup rapido e sicuro
+    for pattern in patterns:
+        ns_sh(ns, f"pkill -f '{pattern}' 2>/dev/null || true")
+    
+    # Breve pausa per cleanup
+    time.sleep(0.5)
+    print(f"[SUCCESS] Namespace {ns} cleaned")
+
+# -------------------------- Traffic Control (Bandwidth limiting) --------------------------
+def setup_traffic_control():
+    """Setup traffic control to isolate experiment traffic from host interference"""
+    print("[INFO] Setting up traffic control for experiment isolation...")
+    
+    # Trova l'interfaccia WAN principale
+    wan_if = sh("ip route get 1.1.1.1 | awk '/dev/ {print $5; exit}'").stdout.strip()
+    if not wan_if:
+        print("[WARNING] Could not detect WAN interface, skipping traffic control")
+        return None
+    
+    print(f"[INFO] Applying traffic control on interface: {wan_if}")
+    
+    # Crea gerarchia di traffic shaping
+    # - Classe prioritaria per traffico namespace (90% banda)
+    # - Classe limitata per traffico host (10% banda)
+    commands = [
+        f"tc qdisc add dev {wan_if} root handle 1: htb default 30",
+        f"tc class add dev {wan_if} parent 1: classid 1:1 htb rate 100mbit",
+        f"tc class add dev {wan_if} parent 1:1 classid 1:10 htb rate 90mbit ceil 95mbit",  # Namespace (prioritario)
+        f"tc class add dev {wan_if} parent 1:1 classid 1:30 htb rate 10mbit ceil 20mbit",  # Host (limitato)
+        # Filtra traffico dal subnet namespace (10.200.0.0/24) -> alta priorità
+        f"tc filter add dev {wan_if} parent 1: protocol ip prio 1 u32 match ip src 10.200.0.0/24 classid 1:10",
+        # Tutto il resto (traffico host) -> classe limitata
+        f"tc filter add dev {wan_if} parent 1: protocol ip prio 2 u32 match ip src 0.0.0.0/0 classid 1:30"
+    ]
+    
+    for cmd in commands:
+        result = sh(f"sudo {cmd}")
+        if result.returncode != 0:
+            print(f"[ERROR] Traffic control setup failed: {cmd}")
+            print(f"[ERROR] {result.stderr}")
+            cleanup_traffic_control()
+            return None
+    
+    print("[SUCCESS] Traffic control active - experiment traffic isolated from host")
+    return wan_if
+
+def cleanup_traffic_control():
+    """Remove traffic control rules"""
+    wan_if = sh("ip route get 1.1.1.1 | awk '/dev/ {print $5; exit}'").stdout.strip()
+    if wan_if:
+        print(f"[INFO] Removing traffic control from {wan_if}")
+        sh(f"sudo tc qdisc del dev {wan_if} root 2>/dev/null || true")
+        print("[SUCCESS] Traffic control removed")
+
 # -------------------------- Chrome / Driver ----------------------------
 def pick_chrome_binary():
     for p in ("/usr/bin/google-chrome","/usr/bin/google-chrome-stable","/usr/bin/chromium",
@@ -232,6 +298,8 @@ def main():
     parser.add_argument("--dynamic-max-pps", type=int, default=100000)
     parser.add_argument("--headless", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--quic-only", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--traffic-control", action=argparse.BooleanOptionalAction, default=True, 
+                        help="Enable traffic control to isolate experiment traffic from host interference")
     args = parser.parse_args()
 
     # prep I/O
@@ -251,6 +319,16 @@ def main():
         quic_only_install(args.ns)
         atexit.register(lambda: quic_only_uninstall(args.ns))
 
+    # Clean namespace from any background processes
+    clean_namespace(args.ns)
+    
+    # Setup traffic control by default for experiment isolation
+    tc_interface = None
+    if args.traffic_control:
+        tc_interface = setup_traffic_control()
+        if tc_interface:
+            atexit.register(cleanup_traffic_control)
+    
     ifname = autodetect_iface(args.ns)
     print(f"[preflight] ns={args.ns} if={ifname} chrome={chrome} major={get_chrome_major(args.ns, chrome)}")
     print("[preflight] ping 1.1.1.1 ->", ns_sh(args.ns, "ping -c1 -W1 1.1.1.1 >/dev/null && echo OK || echo FAIL").stdout.strip())
@@ -264,6 +342,7 @@ def main():
         w.writeheader()
 
         if args.mode == "off":
+            print("[INFO] Starting baseline measurements (mode: off)")
             set_loader(args.ns, "off", ifname)
             for rep in range(1, args.runs_per_level+1):
                 random.shuffle(urls)
@@ -277,6 +356,7 @@ def main():
         elif args.mode == "fixed":
             levels = [int(x) for x in args.levels.split(",") if x.strip()]
             for lvl in levels:
+                print(f"[INFO] Starting fixed mode measurements at level {lvl}%")
                 set_loader(args.ns, "fixed", ifname, fixed_prob=lvl)
                 for rep in range(1, args.runs_per_level+1):
                     random.shuffle(urls)
