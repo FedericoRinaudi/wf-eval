@@ -4,7 +4,58 @@ This project evaluates packet dropping defenses against website fingerprinting a
 
 The framework evaluates two critical aspects: (1) how effectively packet dropping alters traffic patterns for privacy protection, and (2) what performance costs this defense imposes on users. It uses eBPF programs for precise packet manipulation, Selenium WebDriver for automated browsing, and network namespaces for traffic isolation.
 
-## Project Structure
+## Table of Contents
+
+- [Quick Start Guide](#quick-start-guide) - Get up and running in 3 steps
+- [Project Structure](#project-structure) - Overview of components and files
+- [Usage Instructions](#usage-instructions) - Detailed execution options
+- [Output and Results](#output-and-results) - Understanding the generated data
+- [Technical Documentation](#technical-documentation) - System architecture and methodology
+- [License](#license)
+
+---
+
+## 🚀 Quick Start Guide
+
+**For users who want to run the evaluation immediately:**
+
+### 1. Set Execute Permissions
+
+```bash
+# Make all shell scripts executable
+chmod +x install_dependencies.sh
+chmod +x run_full_evaluation.sh
+chmod +x setup_netns.sh
+chmod +x clean_netns.sh
+```
+
+### 2. Install Dependencies
+
+```bash
+# Run the automated installation (Ubuntu 22.04 recommended)
+./install_dependencies.sh
+```
+
+### 3. Run Complete Evaluation
+
+```bash
+# Execute the full evaluation pipeline (45-90 minutes)
+./run_full_evaluation.sh
+```
+
+**What happens during execution:**
+- Sets up isolated network namespace
+- Compiles eBPF programs
+- Runs baseline measurements (no packet drops)
+- Tests fixed drop rates (1%, 2%, 5%, 10%, 20%)
+- Tests dynamic drop rates
+- Analyzes packet captures and generates visualizations
+
+**Results:** Check the `out/` directory for CSV files and plots when complete.
+
+---
+
+## 📁 Project Structure
 
 ### Core Scripts
 
@@ -26,53 +77,25 @@ The framework evaluates two critical aspects: (1) how effectively packet droppin
 - **`ebpf/loader.c`** - User-space program to load and control the eBPF program
 - **`ebpf/Makefile`** - Build configuration for eBPF components
 
-## Quick Start
+---
 
-### 1. Set Execute Permissions
+## ⚙️ Usage Instructions
 
-First, make the scripts executable:
+**For users who need more control or want to understand individual components:**
 
-```bash
-# Make all shell scripts executable
-chmod +x install_dependencies.sh
-chmod +x run_full_evaluation.sh
-chmod +x setup_netns.sh
-chmod +x clean_netns.sh
-```
+### Option A: Automated Execution (Recommended)
 
-### 2. Install Dependencies
+Use the main orchestration script for a complete evaluation:
 
 ```bash
-# Run the automated installation (Ubuntu 22.04 recommended)
-./install_dependencies.sh
-```
-
-This script installs:
-- Basic development tools (build-essential, git, etc.)
-- Python 3.x with development packages
-- Chrome/Chromium browser and ChromeDriver
-- eBPF development tools (libbpf, clang, linux-headers)
-- Python packages (selenium, scapy, matplotlib, pandas, tqdm)
-
-### 3. Run Complete Evaluation
-
-```bash
-# Execute the full evaluation pipeline (45-90 minutes)
 ./run_full_evaluation.sh
 ```
 
-This will:
-- Set up network namespace
-- Compile eBPF programs
-- Run baseline measurements (no drops)
-- Run fixed drop rate experiments (1-20%)
-- Run dynamic drop rate experiments
-- Analyze packet captures
-- Generate plots and statistics
+This handles everything automatically and is suitable for most users.
 
-## Manual Execution Steps
+### Option B: Manual Step-by-Step Execution
 
-If you prefer to run components individually:
+For debugging, customization, or educational purposes:
 
 ### 1. Network Setup
 
@@ -102,7 +125,7 @@ cd ..
 python3 run_measurements.py [options]
 ```
 
-Available options:
+**Available options:**
 - `--urls`: URL list file (default: urls.txt)
 - `--ns`: Network namespace (default: wfns)
 - `--mode`: Experiment mode (off/fixed/dynamic)
@@ -126,14 +149,52 @@ python3 plot_results.py
 ./clean_netns.sh
 ```
 
-## Output Structure
+---
+
+## 📊 Output and Results
+
+**Understanding your results:**
 
 The `out/` directory contains:
-- **`nav_metrics.csv`** - Navigation timing metrics (performance evaluation)
+
+### Performance Data
+- **`nav_metrics.csv`** - Navigation timing metrics (page load times, connection durations)
 - **`summary.csv`** - Aggregated network statistics (performance + obfuscation analysis)
+
+### Traffic Analysis Data  
 - **`iat_up.csv, iat_down.csv`** - Inter-arrival time distributions (traffic pattern obfuscation analysis)
-- **`pcaps/`** - Raw packet captures for detailed analysis
-- **`plots/`** - Generated visualizations (bar charts and CDFs)
+- **`pcaps/`** - Raw packet captures for detailed network analysis
+
+### Visualizations
+- **`plots/`** - Generated charts and graphs:
+  - Bar charts comparing performance across packet drop levels
+  - Cumulative Distribution Functions (CDFs) showing result distributions
+  - Time series plots demonstrating traffic obfuscation effectiveness
+
+---
+
+## 🔧 Technical Documentation
+
+**For researchers, developers, and those interested in the methodology:**
+
+### Dependencies Installed by `install_dependencies.sh`
+
+**System packages:**
+- Basic development tools (build-essential, git, etc.)
+- Python 3.x with development packages
+- Chrome/Chromium browser and ChromeDriver
+- eBPF development tools (libbpf, clang, linux-headers)
+
+**Python packages:**
+- selenium, scapy, matplotlib, pandas, tqdm
+
+### System Requirements
+
+- **Operating System**: Ubuntu 22.04 (recommended)
+- **Privileges**: Root access required for network namespace setup and eBPF program loading
+- **Memory**: At least 4GB RAM recommended
+- **Disk Space**: ~2GB for dependencies, additional space for packet captures
+- **Network**: Internet connection for testing websites
 
 ## Experimental Design and Methodology
 
@@ -319,6 +380,7 @@ This experimental framework enables investigation of critical questions in priva
 2. **Obfuscation Effectiveness**: How successfully does controlled packet loss alter traffic patterns used for website fingerprinting?
 3. **Defense Optimization**: What is the optimal balance between privacy protection and performance degradation?
 
+---
 
 ## License
 
