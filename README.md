@@ -172,31 +172,31 @@ This framework quantifies how packet loss affects QUIC protocol performance thro
 │  ┌─────────────────────────────────────────────────────────────────────────┐    │
 │  │                        NETWORK NAMESPACE (wfns)                         │    │
 │  │                                                                         │    │
-│  │  ┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐   │    │
-│  │  │   Chrome Browser │    │  eBPF Program   │    │   Packet Capture │   │    │
-│  │  │  + Selenium WD   │    │ (Packet Dropper)│    │    (tcpdump)     │   │    │
-│  │  │                  │    │                 │    │                  │   │    │
-│  │  │ ┌──────────────┐ │    │ ┌─────────────┐ │    │ ┌──────────────┐ │   │    │
-│  │  │ │ Navigation   │ │    │ │ UDP/443     │ │    │ │ QUIC Traffic │ │   │    │
-│  │  │ │ Timing API   │ │    │ │ Filter &    │ │    │ │ Analysis     │ │   │    │
-│  │  │ │              │ │    │ │ Drop Logic  │ │    │ │              │ │   │    │
-│  │  │ └──────────────┘ │    │ └─────────────┘ │    │ └──────────────┘ │   │    │
-│  │  └──────────────────┘    └─────────────────┘    └──────────────────┘   │    │
+│  │  ┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐    │    │
+│  │  │   Chrome Browser │    │  eBPF Program   │    │   Packet Capture │    │    │
+│  │  │  + Selenium WD   │    │ (Packet Dropper)│    │    (tcpdump)     │    │    │
+│  │  │                  │    │                 │    │                  │    │    │
+│  │  │ ┌──────────────┐ │    │ ┌─────────────┐ │    │ ┌──────────────┐ │    │    │
+│  │  │ │ Navigation   │ │    │ │ UDP/443     │ │    │ │ QUIC Traffic │ │    │    │
+│  │  │ │ Timing API   │ │    │ │ Filter &    │ │    │ │ Analysis     │ │    │    │
+│  │  │ │              │ │    │ │ Drop Logic  │ │    │ │              │ │    │    │
+│  │  │ └──────────────┘ │    │ └─────────────┘ │    │ └──────────────┘ │    │    │
+│  │  └──────────────────┘    └─────────────────┘    └──────────────────┘    │    │
 │  │                                    │                                    │    │
 │  │  ┌─────────────────────────────────▼────────────────────────────────┐   │    │
-│  │  │                     VIRTUAL NETWORK INTERFACE (veth0)             │   │    │
+│  │  │                     VIRTUAL NETWORK INTERFACE (veth0)            │   │    │
 │  │  │                      IP: 192.168.1.2/24                          │   │    │
-│  │  └─────────────────────────────────────────────────────────────────────┘   │    │
+│  │  └──────────────────────────────────────────────────────────────────┘   │    │
 │  └─────────────────────────────────────────────────────────────────────────┘    │
 │                                      │                                          │
-│  ┌─────────────────────────────────────▼────────────────────────────────────┐    │
+│  ┌─────────────────────────────────────▼───────────────────────────────────┐    │
 │  │                     HOST NETWORK INTERFACE (veth1)                      │    │
-│  │                           IP: 192.168.1.1/24                           │    │
+│  │                           IP: 192.168.1.1/24                            │    │
 │  │                                                                         │    │
-│  │  ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐   │    │
-│  │  │ Traffic Control │     │ NAT/Masquerade  │     │ Bandwidth Limit │   │    │
-│  │  │ (HTB Queuing)   │     │ (iptables)      │     │ (90% experiment)│   │    │
-│  │  └─────────────────┘     └─────────────────┘     └─────────────────┘   │    │
+│  │  ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐    │    │
+│  │  │ Traffic Control │     │ NAT/Masquerade  │     │ Bandwidth Limit │    │    │
+│  │  │ (HTB Queuing)   │     │ (iptables)      │     │ (90% experiment)│    │    │
+│  │  └─────────────────┘     └─────────────────┘     └─────────────────┘    │    │
 │  └─────────────────────────────────────────────────────────────────────────┘    │
 │                                      │                                          │
 └──────────────────────────────────────┼──────────────────────────────────────────┘
@@ -220,41 +220,41 @@ START
   │
   ▼
 ┌─────────────────────────┐
-│   Setup Environment    │
+│   Setup Environment     │
 │ • Create namespace      │
 │ • Configure network     │
-│ • Compile eBPF         │
+│ • Compile eBPF          │
 └─────────┬───────────────┘
           │
           ▼
 ┌─────────────────────────┐
-│  Pre-flight Checks     │
+│  Pre-flight Checks      │
 │ • Connectivity test     │
 │ • Browser validation    │
-│ • QUIC support check   │
+│ • QUIC support check    │
 └─────────┬───────────────┘
           │
           ▼
 ┌─────────────────────────┐      ┌─────────────────────────┐
-│   Baseline Mode        │      │    Fixed Drop Mode     │
-│ • No packet dropping   │ ────▶│ • 0%, 5%, 10%, 15%, 20% │
+│   Baseline Mode         │      │    Fixed Drop Mode      │
+│ • No packet dropping    │ ────▶│ • 0%, 5%, 10%, 15%, 20% │
 │ • Reference measurements│      │ • Multiple repetitions  │
 └─────────┬───────────────┘      └─────────┬───────────────┘
           │                                │
           ▼                                ▼
 ┌─────────────────────────┐      ┌─────────────────────────┐
-│   Dynamic Drop Mode    │      │    Data Collection     │
-│ • Traffic-based drops  │ ────▶│ • Page load times      │
-│ • Realistic congestion │      │ • Network statistics    │
-└─────────┬───────────────┘      │ • Packet captures      │
+│   Dynamic Drop Mode     │      │    Data Collection      │ 
+│ • Traffic-based drops   │ ────▶│ • Page load times       │
+│ • Realistic congestion  │      │ • Network statistics    │
+└─────────┬───────────────┘      │ • Packet captures       │
           │                      └─────────┬───────────────┘
           │                                │
           ▼                                ▼
 ┌─────────────────────────┐      ┌─────────────────────────┐
-│     Analysis Phase     │      │   Generate Results     │
-│ • Statistical analysis │ ────▶│ • Performance plots    │
-│ • Confidence intervals │      │ • Summary statistics   │
-│ • Protocol behavior    │      │ • Research insights    │
+│     Analysis Phase      │      │   Generate Results      │
+│ • Statistical analysis  │ ────▶│ • Performance plots     │
+│ • Confidence intervals  │      │ • Summary statistics    │
+│ • Protocol behavior     │      │ • Research insights     │
 └─────────────────────────┘      └─────────────────────────┘
 ```
 
@@ -304,32 +304,32 @@ Time →  0ms    100ms   200ms   300ms   ...   5000ms   END
         │       │       │       │       │      │      │
         ▼       ▼       ▼       ▼       ▼      ▼      ▼
 ┌───────────────────────────────────────────────────────────┐
-│                  BROWSER TIMELINE                        │
-│ Start → DNS → Connect → TLS → Request → Response → Load  │
+│                  BROWSER TIMELINE                         │
+│ Start → DNS → Connect → TLS → Request → Response → Load   │
 └───────────────────────────────────────────────────────────┘
         │
         ▼
 ┌───────────────────────────────────────────────────────────┐
-│                  EBPF PACKET DROPPING                    │
-│ ████░░██░░█████░░░██░░░░███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
-│ █ = Packet Passed    ░ = Packet Dropped                 │
+│                  EBPF PACKET DROPPING                     │
+│ ████░░██░░█████░░░██░░░░███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+│ █ = Packet Passed    ░ = Packet Dropped                   │
 └───────────────────────────────────────────────────────────┘
         │
         ▼
 ┌───────────────────────────────────────────────────────────┐
-│                  PACKET CAPTURE                          │
-│ UDP/443: [SYN] [ACK] [DATA] [DATA] [FIN] ...             │
-│ Bytes: 1.2MB Up, 3.4MB Down                             │
-│ Packets: 234 Up, 567 Down                               │
+│                  PACKET CAPTURE                           │
+│ UDP/443: [SYN] [ACK] [DATA] [DATA] [FIN] ...              │
+│ Bytes: 1.2MB Up, 3.4MB Down                               │
+│ Packets: 234 Up, 567 Down                                 │
 └───────────────────────────────────────────────────────────┘
         │
         ▼
 ┌───────────────────────────────────────────────────────────┐
-│                  DATA COLLECTION                         │
-│ • Page Load Time: 3.2 seconds                           │
-│ • Navigation Timing: detailed breakdown                  │
-│ • Network Metrics: volume, duration, timing             │
-│ • Quality Checks: non-empty capture, successful load    │
+│                  DATA COLLECTION                          │
+│ • Page Load Time: 3.2 seconds                             │
+│ • Navigation Timing: detailed breakdown                   │
+│ • Network Metrics: volume, duration, timing               │
+│ • Quality Checks: non-empty capture, successful load      │
 └───────────────────────────────────────────────────────────┘
 ```
 
@@ -433,7 +433,7 @@ url,level,rep,iat_s
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Raw Data Files │    │  Data Processing │    │ Statistical     │
+│  Raw Data Files │    │ Data Processing │    │ Statistical     │
 │                 │    │                 │    │ Analysis        │
 │ • nav_metrics   │───▶│ • Aggregation   │───▶│                 │
 │ • summary.csv   │    │ • Filtering     │    │ • Mean ± 95% CI │
@@ -443,22 +443,22 @@ url,level,rep,iat_s
                                                        │
                                                        ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     VISUALIZATION OUTPUTS                      │
+│                     VISUALIZATION OUTPUTS                       │
 │                                                                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │   Bar Charts    │  │      CDFs       │  │  Time Series    │ │
-│  │                 │  │                 │  │                 │ │
-│  │ PLT vs Loss %   │  │ Performance     │  │ Inter-arrival   │ │
-│  │ ┌─┐ ┌─┐ ┌─┐ ┌─┐ │  │ Distribution    │  │ Time Patterns   │ │
-│  │ │ │ │ │ │ │ │ │ │  │                 │  │                 │ │
-│  │ └─┘ └─┘ └─┘ └─┘ │  │     ∫ᶜᵈᶠ       │  │ ∼∼∼∼∼∼∼∼∼∼∼   │ │
-│  │ 0% 5% 10% 15%   │  │ 0─────────────1 │  │                 │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │   Bar Charts    │  │      CDFs       │  │  Time Series    │  │
+│  │                 │  │                 │  │                 │  │
+│  │ PLT vs Loss %   │  │ Performance     │  │ Inter-arrival   │  │
+│  │ ┌─┐ ┌─┐ ┌─┐ ┌─┐ │  │ Distribution    │  │ Time Patterns   │  │
+│  │ │ │ │ │ │ │ │ │ │  │                 │  │                 │  │
+│  │ └─┘ └─┘ └─┘ └─┘ │  │                 │  │                 │  │
+│  │ 0% 5% 10% 15%   │  │                 │  │                 │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 │                                                                 │
 │  Performance Impact:           Protocol Behavior:               │
 │  • Baseline comparison         • Congestion response            │
-│  • Degradation thresholds      • Retry patterns                │
-│  • Statistical significance    • Flow characteristics          │
+│  • Degradation thresholds      • Retry patterns                 │
+│  • Statistical significance    • Flow characteristics           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
