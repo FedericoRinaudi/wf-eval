@@ -6,12 +6,12 @@ The framework evaluates two critical aspects: (1) how effectively packet droppin
 
 ## Table of Contents
 
-- [Quick Start Guide](#quick-start-guide) - Get up and running in 3 steps
-- [Project Structure](#project-structure) - Overview of components and files
-- [Usage Instructions](#usage-instructions) - Detailed execution options
-- [Output and Results](#output-and-results) - Understanding the generated data
-- [Experimental Design and Methodology](#experimental-design-and-methodology) - System architecture and methodology
-- [License](#license)
+- [🚀 Quick Start Guide](#-quick-start-guide) - Get up and running in 3 steps
+- [📁 Project Structure](#-project-structure) - Overview of components and files
+- [⚙️ Usage Instructions](#️-usage-instructions) - Detailed execution options
+- [📊 Output and Results](#-output-and-results) - Understanding the generated data
+- [🔬 Experimental Design and Methodology](#-experimental-design-and-methodology) - System architecture and methodology
+- [📄 License](#-license)
 
 ---
 
@@ -173,7 +173,7 @@ The `out/` directory contains:
 
 ---
 
-## Experimental Design and Methodology
+## 🔬 Experimental Design and Methodology
 
 ### Research Objectives
 
@@ -361,6 +361,6 @@ This experimental framework enables investigation of critical questions in priva
 
 ---
 
-## License
+## 📄 License
 
 This project is provided as-is for research and educational purposes. Review and comply with applicable terms of service for websites being measured.
