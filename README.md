@@ -25,8 +25,6 @@ The framework evaluates two critical aspects: (1) how effectively packet droppin
 - **`ebpf/packet_dropper.bpf.c`** - eBPF program for packet dropping
 - **`ebpf/loader.c`** - User-space program to load and control the eBPF program
 - **`ebpf/Makefile`** - Build configuration for eBPF components
-- **`ebpf/loader`** - Compiled eBPF loader binary
-- **`ebpf/packet_dropper.bpf.o`** - Compiled eBPF object file
 
 ## Quick Start
 
