@@ -133,37 +133,14 @@ python3 plot_results.py
 
 ## Output Structure
 
-After running the evaluation, the `out/` directory contains:
+The `out/` directory contains:
+- **`nav_metrics.csv`** - Navigation timing metrics
+- **`summary.csv`** - Aggregated network statistics  
+- **`iat_up.csv, iat_down.csv`** - Inter-arrival time distributions
+- **`pcaps/`** - Raw packet captures for detailed analysis
+- **`plots/`** - Generated visualizations (bar charts and CDFs)
 
-```
-out/
-├── nav_metrics.csv     # Navigation timing metrics
-├── summary.csv         # Aggregated network statistics
-├── iat_up.csv         # Uplink inter-arrival times
-├── iat_down.csv       # Downlink inter-arrival times
-├── pcaps/             # Raw packet captures
-│   ├── baseline_*.pcap
-│   ├── fixed_*.pcap
-│   └── dynamic_*.pcap
-└── plots/             # Generated visualizations
-    ├── bar_*.png      # Bar charts with confidence intervals
-    └── cdf_*.png      # Cumulative distribution functions
-```
-
-## Key Metrics
-
-The tool measures:
-
-- **Page Load Time**: Complete page loading duration
-- **Network Traffic**: Bytes and packets sent/received
-- **Flow Duration**: Total connection time
-- **Inter-arrival Times**: Packet timing patterns
-
-## Experiment Modes
-
-1. **Baseline**: No packet dropping (reference measurements)
-2. **Fixed**: Static drop rates from 0% to 20%
-3. **Dynamic**: Variable drop rates during page load
+**Key Metrics**: Page Load Time, Network Traffic (bytes/packets), Flow Duration, Inter-arrival Times
 
 ## Requirements
 
@@ -174,74 +151,9 @@ The tool measures:
 - **Memory**: ~2GB available RAM
 - **Storage**: ~1GB for dependencies and results
 
-## Troubleshooting
-
-### Common Issues
-
-1. **ChromeDriver version mismatch**:
-   ```bash
-   # Check Chrome and ChromeDriver compatibility
-   google-chrome --version
-   chromedriver --version
-   ```
-
-2. **eBPF compilation errors**:
-   ```bash
-   # Check kernel headers
-   sudo apt install linux-headers-$(uname -r)
-   ```
-
-3. **Network namespace issues**:
-   ```bash
-   # Reset network setup
-   sudo ip netns del wfns
-   ./setup_netns.sh
-   
-   # Or clean active processes in namespace
-   ./clean_netns.sh
-   ```
-
-4. **Permission errors**:
-   ```bash
-   # Ensure proper privileges
-   sudo -v
-   ```
-
-5. **Script execution permission denied**:
-   ```bash
-   # Make scripts executable
-   chmod +x *.sh
-   ```
-
-6. **Orphaned processes in namespace**:
-   ```bash
-   # Clean specific experiment processes
-   ./clean_netns.sh
-   
-   # Check processes in namespace
-   sudo ip netns exec wfns ps aux
-   ```
-
-### Debug Mode
-
-Run individual components with verbose output:
-
-```bash
-# Verbose measurement run
-python3 run_measurements.py --mode baseline
-
-# Check eBPF loader
-./ebpf/loader --help
-```
-
 ## Development
 
-To modify the evaluation:
-
-1. **Add URLs**: Edit `urls.txt`
-2. **Adjust drop rates**: Modify `run_measurements.py` level ranges
-3. **Custom metrics**: Extend `analyse_pcaps.py` analysis
-4. **New visualizations**: Add plots in `plot_results.py`
+**Customization**: Edit `urls.txt` for different websites, modify drop rates in `run_measurements.py`, extend analysis in `analyse_pcaps.py`, or add visualizations in `plot_results.py`.
 
 ## Citation
 
@@ -249,9 +161,7 @@ If you use this tool in research, please include appropriate attribution and con
 
 ## Experimental Design and Methodology
 
-### Scientific Approach
-
-This evaluation framework implements a controlled experimental methodology to quantify the impact of packet loss on web performance, specifically targeting QUIC protocol traffic. The design follows established principles from network measurement research with several key innovations for modern web traffic analysis.
+This framework implements a controlled experimental methodology to quantify packet loss impact on QUIC protocol web performance, following established network measurement research principles.
 
 ### Experimental Architecture
 
