@@ -85,7 +85,7 @@ install_python_dependencies() {
     
     source venv/bin/activate
     pip install --upgrade pip
-    pip install selenium scapy
+    pip install selenium scapy pandas numpy matplotlib tqdm
     deactivate
     print_success "Python environment ready"
 }
@@ -127,8 +127,13 @@ install_ebpf_minimal() {
     print_status "Installing minimal eBPF dependencies..."
     sudo apt install -y \
         clang \
+        llvm \
         libbpf-dev \
-        linux-headers-$(uname -r)
+        linux-headers-$(uname -r) \
+        linux-headers-generic \
+        linux-libc-dev \
+        libc6-dev \
+        gcc-multilib
     print_success "eBPF dependencies installed"
 }
 
