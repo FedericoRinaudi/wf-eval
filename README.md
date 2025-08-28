@@ -332,6 +332,8 @@ Raw Measurements → Validation → Statistical Analysis → Visualization
    CSV Files      Filtering    Mean ± 95% CI         Bar Charts
    PCAP Files     Validation   Significance          CDFs
                   Aggregation  Testing               Time Series
+```
+
 **Output Structure**: Standardized CSV files enable reproducible analysis:
 - `nav_metrics.csv`: Navigation timing data
 - `summary.csv`: Network statistics and performance metrics  
