@@ -161,177 +161,239 @@ If you use this tool in research, please include appropriate attribution and con
 
 ## Experimental Design and Methodology
 
-This framework implements a controlled experimental methodology to quantify packet loss impact on QUIC protocol web performance, following established network measurement research principles.
+This framework quantifies how packet loss affects QUIC protocol performance through controlled network experiments. The methodology follows rigorous measurement research principles to ensure reproducible and statistically valid results.
 
-### Experimental Architecture
+### Core Experimental Setup
 
-#### 1. Traffic Isolation and Control
+The evaluation system creates a controlled environment where packet loss can be precisely applied to web traffic while measuring its impact on page loading performance. The key insight is that by isolating the network environment and controlling packet drops at the kernel level, we can establish clear cause-and-effect relationships between network conditions and web performance.
 
-**Network Namespace Isolation**: The system employs Linux network namespaces (`wfns`) to create a completely isolated network stack. This prevents interference from host system traffic and enables precise control over experimental conditions. The namespace setup includes:
+#### Network Isolation Architecture
 
-- Dedicated virtual ethernet pair (`veth0`/`veth1`) connecting host and namespace
-- Custom routing table with controlled default gateway
-- Isolated DNS configuration (1.1.1.1, 8.8.8.8) for consistent resolution
-- NAT-based internet connectivity maintaining isolation
+**Why Isolation Matters**: Web performance measurements can be severely affected by background traffic, system processes, and variable network conditions. To eliminate these confounding factors, the framework creates a completely isolated network environment.
 
-**Traffic Control (TC) Implementation**: A hierarchical traffic shaping system using HTB (Hierarchical Token Bucket) qdisc provides bandwidth prioritization:
-- Namespace traffic: 90% bandwidth allocation (rate: 90mbit, ceil: 95mbit)
-- Host traffic: 10% bandwidth allocation (rate: 10mbit, ceil: 20mbit)
-- This prevents background applications from affecting measurement accuracy
+**Implementation**: The system uses Linux network namespaces to create a separate network stack:
+- A dedicated virtual network interface (`veth0`/`veth1`) connects the isolated environment to the host
+- Custom routing ensures all test traffic flows through controlled paths
+- NAT provides internet access while maintaining isolation
+- DNS is configured to use reliable public servers (1.1.1.1, 8.8.8.8)
 
-#### 2. QUIC Protocol Enforcement
+**Traffic Prioritization**: The framework implements bandwidth allocation to prevent interference:
+- 90% bandwidth allocated to experimental traffic
+- 10% reserved for host system operations
+- This ensures consistent network conditions during measurements
 
-**Selective Protocol Blocking**: The framework optionally implements nftables rules to enforce QUIC-only traffic:
-```
-UDP/443 → ACCEPT (QUIC traffic)
-TCP/443 → REJECT (Force QUIC fallback prevention)
-```
+#### Packet Loss Simulation
 
-This ensures measurements specifically target QUIC protocol performance rather than mixed protocol scenarios, providing cleaner experimental conditions for packet loss impact analysis.
+**eBPF-Based Approach**: Traditional packet loss simulation tools (like `tc netem`) operate in userspace and can introduce timing artifacts. This framework uses eBPF (Extended Berkeley Packet Filter) programs that run directly in the kernel for precise packet manipulation:
 
-#### 3. eBPF-Based Packet Manipulation
+- **Wire-Speed Processing**: Packet drop decisions are made at line rate without buffering delays
+- **Surgical Precision**: Only UDP packets on port 443 (QUIC traffic) are affected
+- **Minimal System Impact**: Kernel-space execution eliminates context switching overhead
 
-**Kernel-Level Precision**: The packet dropping mechanism uses eBPF (Extended Berkeley Packet Filter) programs attached to traffic control hooks, providing:
+**Two Experimental Modes**:
 
-- **Minimal Overhead**: Kernel-space execution eliminates userspace context switching delays
-- **Precise Timing**: Packet decisions made at wire speed without buffering delays
-- **Selective Targeting**: UDP-specific dropping to simulate QUIC congestion scenarios
+1. **Fixed Drop Rate Mode**: Applies constant packet loss percentages (0%, 5%, 10%, 15%, 20%)
+   - Purpose: Establish direct correlation between loss rate and performance impact
+   - Use case: Understanding QUIC's resilience to different congestion levels
 
-**Operating Modes**:
+2. **Dynamic Drop Rate Mode**: Packet loss adapts based on traffic volume
+   - Purpose: Simulate realistic network congestion where higher traffic leads to more drops
+   - Use case: Understanding how QUIC performs under varying network load
 
-1. **Fixed Mode**: Constant drop probability (0-20%) for controlled loss rate analysis
-   - Enables direct correlation between loss rate and performance degradation
-   - Provides baseline measurements for statistical comparison
+### Measurement Process
 
-2. **Dynamic Mode**: Adaptive dropping based on real-time traffic rate
-   - Simulates realistic network congestion scenarios
-   - Higher traffic volumes trigger proportionally higher loss rates
-   - Models bandwidth competition and network saturation effects
+#### Browser Configuration and Control
 
-### Measurement Methodology
-
-#### 1. Browser Automation and Consistency
-
-**Chrome Configuration**: Selenium WebDriver controls a hardened Chrome instance with optimized settings:
+**Consistent Testing Environment**: Achieving reproducible web performance measurements requires eliminating browser-related variability. The framework uses Selenium WebDriver to control Chrome with carefully selected options:
 
 ```bash
---enable-quic                    # Force QUIC protocol usage
---disable-extensions            # Eliminate browser overhead
---incognito                     # Clean state for each measurement
---disable-background-networking # Prevent interference traffic
---disk-cache-size=1            # Force network fetches
---no-sandbox                   # Namespace compatibility
+--enable-quic                    # Ensure QUIC protocol is used when available
+--disable-extensions            # Remove browser extension overhead
+--incognito                     # Start with clean state (no cache, cookies, history)
+--disable-background-networking # Prevent interference from browser background processes
+--disk-cache-size=1            # Force fresh network requests
+--no-sandbox                   # Required for operation in network namespace
 ```
 
-**Performance Timing Collection**: Navigation Timing API provides microsecond-precision metrics:
-- `performance.getEntriesByType('navigation')[0]`
-- Page Load Time (PLT): `loadEventEnd - startTime`
-- Wall-clock timing for validation
+**Why These Settings Matter**: 
+- Incognito mode ensures each measurement starts with a clean browser state
+- Disabled cache forces actual network traffic for every test
+- QUIC enablement ensures we're measuring the target protocol
+- Background process disabling prevents interference from browser telemetry
 
-#### 2. Network Traffic Capture and Analysis
+**Performance Data Collection**: The framework captures timing data through the browser's Navigation Timing API:
+- `performance.getEntriesByType('navigation')[0]` provides detailed timing breakdown
+- **Page Load Time (PLT)**: Calculated as `loadEventEnd - startTime`
+- Wall-clock timing provides independent validation of browser-reported metrics
 
-**Packet Capture Strategy**: Simultaneous tcpdump capture with BPF filter `"udp and port 443"`:
-- Records all QUIC traffic during page navigation
-- Enables post-measurement verification of dropping effectiveness
-- Provides data for inter-arrival time analysis and flow characterization
+#### Network Traffic Analysis
 
-**Metrics Extraction**:
-- **Bytes Up/Down**: Total traffic volume in each direction
-- **Packet Counts**: Discrete packet statistics for rate analysis
-- **Flow Duration**: Complete connection lifetime measurement
-- **Inter-Arrival Times**: Packet timing distributions for congestion analysis
+**Packet Capture Strategy**: Simultaneous with browser measurements, the system captures all network traffic using tcpdump with a specific filter for QUIC traffic (`udp and port 443`). This serves multiple purposes:
 
-### Statistical Design
+1. **Verification**: Confirms that packet dropping is working as intended
+2. **Traffic Characterization**: Analyzes how different websites use QUIC protocol
+3. **Inter-arrival Time Analysis**: Studies packet timing patterns under different loss conditions
 
-#### 1. Experimental Controls
+**Key Metrics Extracted**:
+- **Traffic Volume**: Total bytes and packet counts in both directions (upload/download)
+- **Flow Duration**: How long the QUIC connection remains active
+- **Packet Timing**: Inter-arrival times reveal protocol behavior under stress
 
-**Randomization**: URL ordering randomized per repetition to minimize ordering effects and temporal biases.
+### Statistical Methodology
 
-**Replication**: Multiple repetitions (default: 10) per experimental condition ensure statistical significance and confidence interval calculation.
+#### Experimental Controls
 
-**Baseline Establishment**: 'Off' mode provides reference measurements without any packet manipulation for relative performance calculation.
+**Randomization**: URL order is randomized for each experimental run to prevent:
+- Temporal bias (network conditions changing over time)
+- Learning effects (browser or network caching across measurements)
+- Systematic ordering effects that could skew results
 
-#### 2. Data Collection Structure
+**Replication Strategy**: Each experimental condition is repeated multiple times (default: 10 repetitions):
+- Provides sufficient data for statistical significance testing
+- Enables calculation of confidence intervals
+- Accounts for natural variability in web performance
 
-The evaluation generates structured datasets for rigorous analysis:
+**Baseline Establishment**: Every experiment includes measurements with packet dropping disabled ('Off' mode):
+- Provides reference performance under normal conditions
+- Enables calculation of relative performance degradation
+- Accounts for natural website performance variations
+
+#### Data Structure and Quality Assurance
+
+**Structured Output**: The system generates standardized CSV files for analysis:
 
 ```csv
-# Navigation Metrics (nav_metrics.csv)
+# Navigation timing data (nav_metrics.csv)
 mode,level,url,rep,pcap,plt_ms,t_wall_start,t_wall_end
 
-# Network Summary (summary.csv)  
+# Network statistics (summary.csv)
 url,level,rep,pcap,plt_ms,bytes_up,bytes_down,pkt_up,pkt_down,duration_s
 
-# Inter-Arrival Time Distributions (iat_up.csv, iat_down.csv)
+# Packet timing analysis (iat_up.csv, iat_down.csv)
 url,level,rep,iat_s
 ```
 
-### Experimental Validation
+**Quality Controls**:
+- **Timeout Handling**: 120-second page load timeout accommodates high packet loss scenarios
+- **Error Recovery**: Graceful handling of navigation failures and browser crashes
+- **Data Validation**: Non-empty packet captures confirm successful measurements
+- **Connectivity Verification**: Pre-flight checks ensure experimental setup is working
 
-#### 1. Connectivity and Protocol Verification
+### Analysis and Interpretation
 
-**Pre-flight Checks**:
-- Namespace connectivity validation (`ping 1.1.1.1`)
-- Chrome/ChromeDriver version compatibility verification
-- QUIC support confirmation via UDP/443 traffic detection
+#### Performance Metrics
 
-**Real-time Monitoring**:
-- eBPF program attachment verification
-- Packet capture validation (non-empty pcap files)
-- Network interface status monitoring
+**Primary Measurement**: Page Load Time (PLT) serves as the main performance indicator because:
+- It represents the user-visible impact of network conditions
+- It's a standardized metric across different websites
+- It captures the cumulative effect of all network interactions during page loading
 
-#### 2. Quality Assurance
+**Supporting Metrics**:
+- **Traffic Volume**: How much data is transferred (indicates protocol efficiency)
+- **Connection Duration**: How long QUIC maintains connections (reveals protocol behavior)
+- **Packet Timing Patterns**: Inter-arrival times show how packet loss affects protocol dynamics
 
-**Timeout Handling**: Extended page load timeout (120s) accommodates high packet loss scenarios while preventing indefinite hangs.
+#### Statistical Analysis Approach
 
-**Error Recovery**: Graceful handling of navigation failures, network timeouts, and browser crashes with continued experiment execution.
+**Confidence Intervals**: All results include 95% confidence intervals calculated using standard error methods. This provides:
+- Statistical rigor for comparing different experimental conditions
+- Clear indication of measurement uncertainty
+- Basis for determining statistically significant differences
 
-**Cleanup Procedures**: Automatic cleanup of temporary profiles, network configurations, and background processes ensures clean experimental state.
+**Comparative Visualization**:
+- **Bar Charts**: Show mean performance with error bars for direct comparison across packet loss levels
+- **Cumulative Distribution Functions (CDFs)**: Reveal the full distribution of performance measurements
+- **Time Series Analysis**: Inter-arrival time plots show how packet loss affects protocol timing
 
-### Analytical Framework
+### Research Applications and Insights
 
-#### 1. Performance Metrics
+This experimental framework enables investigation of several important questions about modern web performance:
 
-**Primary Metrics**:
-- **Page Load Time (PLT)**: End-to-end web page loading duration
-- **Traffic Volume**: Bidirectional byte and packet counts
-- **Flow Characteristics**: Connection duration and packet timing patterns
+#### Core Research Questions
 
-**Derived Metrics**:
-- **Performance Degradation**: Relative increase from baseline measurements
-- **Traffic Efficiency**: Bytes per successful page load
-- **Protocol Behavior**: QUIC congestion response patterns
+1. **QUIC Resilience**: How much packet loss can QUIC tolerate before performance significantly degrades?
+   - Baseline measurements establish normal performance
+   - Fixed drop rate experiments reveal degradation thresholds
+   - Results inform network capacity planning
 
-#### 2. Visualization and Statistical Analysis
+2. **Protocol Adaptation**: How does QUIC modify its behavior under different network conditions?
+   - Packet timing analysis reveals congestion control responses
+   - Traffic volume changes show protocol adaptation strategies
+   - Connection duration patterns indicate retry and timeout behaviors
 
-**Confidence Intervals**: 95% confidence intervals using standard error calculations for robust statistical comparison.
+3. **Website Variability**: Do different websites respond differently to identical network conditions?
+   - Multi-site measurements reveal implementation differences
+   - Content type effects (video, images, text) become apparent
+   - CDN and server infrastructure impacts are measurable
 
-**Comparative Analysis**: 
-- Bar charts with error bars for cross-condition comparison
-- Cumulative Distribution Functions (CDFs) for distribution analysis
-- Inter-arrival time analysis for protocol behavior characterization
+#### Practical Applications
 
-### Research Applications
+**Network Planning**: Results help network operators understand:
+- What packet loss levels are acceptable for good web performance
+- How much bandwidth is needed to maintain quality of experience
+- Where to invest in infrastructure improvements
 
-This framework enables investigation of several research questions:
+**Protocol Development**: Insights inform QUIC protocol improvements:
+- Identifying scenarios where performance degrades unexpectedly
+- Understanding how different congestion control algorithms perform
+- Revealing opportunities for protocol optimization
 
-1. **QUIC Resilience**: How does QUIC protocol performance degrade under various packet loss conditions?
+### Experimental Validation and Limitations
 
-2. **Congestion Response**: How do different websites adapt their traffic patterns to network congestion?
+#### Built-in Validation Mechanisms
 
-3. **Performance Modeling**: Can we model the relationship between packet loss and web performance for capacity planning?
+**Connectivity Verification**: Before each experiment, the system verifies:
+- Network namespace has internet connectivity (`ping 1.1.1.1`)
+- Chrome and ChromeDriver versions are compatible
+- QUIC protocol support is available and functioning
 
-4. **Protocol Comparison**: How does QUIC performance compare to TCP under identical network conditions?
+**Real-time Monitoring**: During measurements, the system checks:
+- eBPF programs are properly attached and functioning
+- Packet captures contain expected QUIC traffic
+- Browser successfully loads pages within timeout limits
 
-### Ethical and Reproducibility Considerations
+#### Limitations and Considerations
 
-**Website Selection**: The default URL list includes major websites with known QUIC support, representing diverse content types and geographic distributions.
+**Website Dependencies**: Results depend on:
+- Website server implementations of QUIC
+- CDN configurations and geographic distribution
+- Dynamic content that may vary between measurements
 
-**Rate Limiting**: Measurement intervals and repetitions are designed to avoid excessive load on target websites.
+**Environment Factors**: Measurements are affected by:
+- Internet connection quality and latency
+- System resource availability (CPU, memory)
+- Time-of-day effects on website performance
 
-**Reproducibility**: All experimental parameters are configurable and documented, enabling replication with different URL sets, network conditions, or measurement scales.
+**Scope Boundaries**: This framework specifically measures:
+- QUIC protocol performance (not TCP-based alternatives)
+- Page load completion (not interactive user experience)
+- Packet loss effects (not bandwidth limitations or latency)
 
-**Privacy**: All measurements are conducted from isolated network namespaces with no persistent data storage or user tracking.
+### Reproducibility and Ethical Considerations
+
+#### Ensuring Reproducible Results
+
+**Documented Configuration**: All experimental parameters are configurable and documented:
+- URL lists can be customized for different website sets
+- Packet loss levels and measurement repetitions are adjustable
+- Analysis scripts can be modified for different research questions
+
+**Standardized Environment**: The framework provides:
+- Automated dependency installation for consistent setup
+- Isolated network environment that eliminates host system interference
+- Deterministic eBPF-based packet manipulation
+
+#### Ethical Research Practices
+
+**Responsible Measurement**: The framework implements:
+- Rate limiting to avoid excessive load on target websites
+- Measurement intervals that respect website terms of service
+- Privacy protection through isolated network namespaces
+
+**Transparency**: All measurement methodologies are documented to enable:
+- Peer review of experimental design
+- Replication by independent researchers
+- Comparison with alternative measurement approaches
 
 ## License
 
