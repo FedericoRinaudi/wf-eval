@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 OUT = Path("out")
-PLOTS = Path("plots")  # Use local plots directory to avoid permission issues
+PLOTS = OUT / "plot"  # Use out/plot directory
 PLOTS.mkdir(parents=True, exist_ok=True)
 
 summary = pd.read_csv(OUT / "summary.csv")
